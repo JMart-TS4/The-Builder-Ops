@@ -1,0 +1,25 @@
+# Entorno y secretos
+.env
+credentials/
+.vectorstore/
+
+# UV
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDEs
+.vscode/
+.idea/
+*.DS_Store
