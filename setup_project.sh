@@ -1,7 +1,7 @@
 #!/bin/bash
 # Ejecutar desde la raíz del proyecto: bash setup_project.sh
 
-echo "🚀 Creando estructura del proyecto..."
+echo "Creando estructura del proyecto..."
 
 # Directorios
 mkdir -p app/components
@@ -63,10 +63,4 @@ touch tests/unit/test_memory.py
 touch tests/integration/test_google_drive.py
 touch tests/integration/test_clickup.py
 
-echo "✅ Estructura creada."
-echo ""
-echo "Próximos pasos:"
-echo "  1. Copia pyproject.toml, .env.example y .gitignore en la raíz"
-echo "  2. Copia tu .env desde .env.example y llena las API keys"
-echo "  3. Ejecuta: uv sync"
-echo "  4. Verifica con: uv run python -c 'import streamlit; print(streamlit.__version__)'"
+echo "Estructura creada."
