@@ -25,9 +25,12 @@ class Settings(BaseSettings):
 
     # RAG / Vectorstore
     vectorstore_path: str = Field(default=".vectorstore", alias="VECTORSTORE_PATH")
-    embedding_model: str = Field(
-        default="models/embedding-001", alias="EMBEDDING_MODEL"
+    embedding_provider: Literal["gemini", "voyage", "openai"] = Field(
+        default="gemini", alias="EMBEDDING_PROVIDER"
     )
+    embedding_model: str = Field(default="", alias="EMBEDDING_MODEL")
+    voyage_api_key: str = Field(default="", alias="VOYAGE_API_KEY")
+    openai_api_key: str = Field(default="", alias="OPENAI_API_KEY")
 
     # App
     app_env: Literal["development", "production"] = Field(
