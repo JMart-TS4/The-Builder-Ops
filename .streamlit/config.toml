@@ -1,0 +1,13 @@
+[theme]
+base                = "dark"
+primaryColor        = "#3B82F6"   # azul corporativo
+backgroundColor     = "#0A0F1E"   # navy oscuro
+secondaryBackgroundColor = "#0F1828"  # navy medio
+textColor           = "#E8EEF8"
+font                = "sans serif"
+
+[server]
+headless = true
+
+[browser]
+gatherUsageStats = false
