@@ -38,12 +38,14 @@ def prepare_documents(
         if not doc.content.strip():
             continue
 
+        doc_id = doc.metadata.get("file_id") or doc.metadata.get("task_id") or ""
         langchain_doc = LangchainDoc(
             page_content=doc.content,
             metadata={
                 "source": doc.source,
                 "title":  doc.title,
                 "url":    doc.url,
+                "doc_id": doc_id,
                 **doc.metadata,
             },
         )

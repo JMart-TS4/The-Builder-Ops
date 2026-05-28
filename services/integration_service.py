@@ -62,13 +62,18 @@ class IntegrationService:
 
     # ── Sincronización ───────────────────────────────────────────────────────
 
-    def sync(self) -> SyncResult:
-        """Recupera todos los documentos disponibles de ambas fuentes."""
+    def sync(self, since=None) -> SyncResult:
+        """Recupera documentos de ambas fuentes.
+
+        Args:
+            since: datetime opcional — si se provee, solo trae docs creados/modificados
+                   después de esa fecha (sync incremental).
+        """
         result = SyncResult()
 
         if self._drive:
             try:
-                result.drive_docs = self._drive.fetch_documents()
+                result.drive_docs = self._drive.fetch_documents(since=since)
                 logger.info(f"Drive sincronizado: {len(result.drive_docs)} docs")
             except Exception as e:
                 msg = f"Error sincronizando Drive: {e}"
@@ -77,7 +82,7 @@ class IntegrationService:
 
         if self._clickup.is_authenticated():
             try:
-                result.clickup_docs = self._clickup.fetch_documents()
+                result.clickup_docs = self._clickup.fetch_documents(since=since)
                 logger.info(f"ClickUp sincronizado: {len(result.clickup_docs)} docs")
             except Exception as e:
                 msg = f"Error sincronizando ClickUp: {e}"

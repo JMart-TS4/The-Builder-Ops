@@ -7,18 +7,19 @@ logger = get_logger(__name__)
 # Número de chunks relevantes a recuperar por consulta
 TOP_K = 5
 
-def retrieve(query: str, k: int = TOP_K) -> list[LangchainDoc]:
+def retrieve(query: str, user_id: str, k: int = TOP_K) -> list[LangchainDoc]:
     """Recupera los chunks más relevantes para una consulta.
 
     Args:
-        query: Pregunta o mensaje del usuario.
-        k:     Número de resultados a retornar.
+        query:   Pregunta o mensaje del usuario.
+        user_id: Slug del usuario — determina la colección de Chroma.
+        k:       Número de resultados a retornar.
 
     Returns:
         Lista de chunks ordenados por relevancia semántica.
     """
     try:
-        vs      = get_vectorstore()
+        vs      = get_vectorstore(user_id)
         results = vs.similarity_search(query, k=k)
         logger.info(f"Retriever: '{query[:40]}...' → {len(results)} chunks")
         return results

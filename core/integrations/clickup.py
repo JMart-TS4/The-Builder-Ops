@@ -150,12 +150,15 @@ class ClickUpIntegration(BaseIntegration):
     def _get_lists(self, space_id: str) -> list[dict]:
         return self._get(f"space/{space_id}/list", {"archived": False}).get("lists", [])
 
-    def _get_tasks(self, list_id: str) -> list[dict]:
-        return self._get(f"list/{list_id}/task", {
+    def _get_tasks(self, list_id: str, since=None) -> list[dict]:
+        params = {
             "archived": False,
             "include_closed": True,
             "subtasks": True,
-        }).get("tasks", [])
+        }
+        if since is not None:
+            params["date_updated_gt"] = int(since.timestamp() * 1000)
+        return self._get(f"list/{list_id}/task", params).get("tasks", [])
 
     def _get_comments(self, task_id: str) -> list[str]:
         comments = self._get(f"task/{task_id}/comment").get("comments", [])
@@ -192,12 +195,17 @@ class ClickUpIntegration(BaseIntegration):
     # BaseIntegration interface
     # ------------------------------------------------------------------
 
-    def fetch_documents(self) -> list[Document]:
+    def fetch_documents(self, since=None) -> list[Document]:
+        """Recupera tareas de ClickUp.
+
+        Args:
+            since: datetime opcional — filtra tareas actualizadas después de esta fecha.
+        """
         docs = []
         for team in self._get_teams():
             for space in self._get_spaces(team["id"]):
                 for lst in self._get_lists(space["id"]):
-                    for task in self._get_tasks(lst["id"]):
+                    for task in self._get_tasks(lst["id"], since=since):
                         docs.append(self._task_to_document(task))
         logger.info(f"ClickUp: {len(docs)} tareas procesadas (usuario '{self.user_id}')")
         return docs

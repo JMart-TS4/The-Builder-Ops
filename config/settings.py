@@ -29,6 +29,8 @@ class Settings(BaseSettings):
         default="gemini", alias="EMBEDDING_PROVIDER"
     )
     embedding_model: str = Field(default="", alias="EMBEDDING_MODEL")
+    embedding_batch_size: int = Field(default=100, alias="EMBEDDING_BATCH_SIZE")
+    embedding_batch_delay: float = Field(default=1.0, alias="EMBEDDING_BATCH_DELAY")
     voyage_api_key: str = Field(default="", alias="VOYAGE_API_KEY")
     openai_api_key: str = Field(default="", alias="OPENAI_API_KEY")
 

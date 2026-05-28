@@ -90,8 +90,13 @@ class GoogleDriveIntegration(BaseIntegration):
 
         return ""
 
-    def fetch_documents(self, max_files: int = 50) -> list[Document]:
-        """Recupera y extrae texto de todos los archivos soportados en Drive."""
+    def fetch_documents(self, max_files: int = 50, since=None) -> list[Document]:
+        """Recupera y extrae texto de los archivos soportados en Drive.
+
+        Args:
+            max_files: Límite de archivos a traer.
+            since:     datetime opcional — filtra solo archivos modificados después de esta fecha.
+        """
         service = self._get_service()
         docs = []
 
@@ -99,6 +104,8 @@ class GoogleDriveIntegration(BaseIntegration):
             [f"mimeType='{m}'" for m in SUPPORTED_MIME_TYPES.keys()]
         )
         query = f"({mime_filter}) and trashed=false"
+        if since is not None:
+            query += f" and modifiedTime > '{since.strftime('%Y-%m-%dT%H:%M:%SZ')}'"
 
         try:
             results = service.files().list(
