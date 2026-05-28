@@ -28,6 +28,8 @@ dependencies = [
     "pydantic-settings>=2.14.1",
     "python-dotenv>=1.0.1",
     "watchdog>=6.0.0",
+    "langchain-voyageai>=0.3.3",
+    "langchain-openai>=1.2.2",
 ]
 
 [project.optional-dependencies]
