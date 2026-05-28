@@ -87,7 +87,8 @@ class GoogleDriveIntegration(BaseIntegration):
 
         except Exception as e:
             logger.warning(f"No se pudo extraer texto del archivo {file_id}: {e}")
-            return ""
+
+        return ""
 
     def fetch_documents(self, max_files: int = 50) -> list[Document]:
         """Recupera y extrae texto de todos los archivos soportados en Drive."""
