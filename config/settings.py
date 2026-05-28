@@ -18,9 +18,10 @@ class Settings(BaseSettings):
         alias="GOOGLE_DRIVE_CREDENTIALS_PATH"
     )
 
-    # ClickUp
-    clickup_api_token: str = Field(default="", alias="CLICKUP_API_TOKEN")
-    clickup_workspace_id: str = Field(default="", alias="CLICKUP_WORKSPACE_ID")
+    # ClickUp OAuth
+    clickup_client_id: str = Field(default="", alias="CLICKUP_CLIENT_ID")
+    clickup_client_secret: str = Field(default="", alias="CLICKUP_CLIENT_SECRET")
+    clickup_redirect_uri: str = Field(default="http://localhost", alias="CLICKUP_REDIRECT_URI")
 
     # RAG / Vectorstore
     vectorstore_path: str = Field(default=".vectorstore", alias="VECTORSTORE_PATH")
