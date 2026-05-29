@@ -96,9 +96,18 @@ class DocumentService:
         )
         return result
 
-    def get_context(self, query: str, k: int = 5) -> str:
-        """Recupera y formatea contexto relevante para una consulta."""
-        docs = retrieve(query, self._user_id, k=k)
+    def get_context(
+        self,
+        query: str,
+        k: int = 5,
+        project_filter: str | None = None,
+    ) -> str:
+        """Recupera y formatea contexto relevante para una consulta.
+
+        Args:
+            project_filter: Si se indica, restringe la búsqueda a esa Unidad Compartida.
+        """
+        docs = retrieve(query, self._user_id, k=k, project_filter=project_filter)
         return format_context(docs)
 
     def status(self) -> dict:

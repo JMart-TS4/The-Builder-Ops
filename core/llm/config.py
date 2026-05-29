@@ -12,12 +12,12 @@ class LLMProviderConfig:
 PROVIDER_CONFIGS: dict[str, LLMProviderConfig] = {
     "anthropic": LLMProviderConfig(
         model="claude-sonnet-4-6",
-        temperature=0.7,
+        temperature=0.4,
         max_tokens=4096,
     ),
     "gemini": LLMProviderConfig(
         model="gemini-2.5-flash",
-        temperature=0.7,
+        temperature=0.4,
         max_tokens=4096,
     ),
 }

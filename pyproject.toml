@@ -30,6 +30,7 @@ dependencies = [
     "watchdog>=6.0.0",
     "langchain-voyageai>=0.3.3",
     "langchain-openai>=1.2.2",
+    "pypdf>=6.12.2",
 ]
 
 [project.optional-dependencies]

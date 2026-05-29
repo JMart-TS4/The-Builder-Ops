@@ -3,6 +3,7 @@ from app.session import (
     create_new_conversation,
     switch_conversation,
     get_active_conversation,
+    logout,
 )
 from core.sync_state import get_last_sync
 
@@ -62,7 +63,11 @@ def render_sidebar() -> None:
 
         if provider != st.session_state.llm_provider:
             st.session_state.llm_provider = provider
-            st.session_state.chat_service.change_provider(provider)
+            st.session_state.chat_service.change_provider(
+                provider,
+                clickup_integration=st.session_state.get("clickup_integration"),
+                doc_service=st.session_state.get("doc_service"),
+            )
             st.rerun()
 
         _spacer(8)
@@ -83,9 +88,9 @@ def render_sidebar() -> None:
                 with st.spinner("Sincronizando..."):
                     result = doc_service.ingest_incremental()
                 if result.errors:
-                    st.toast(f"Sync con errores: {result.errors[0]}", icon="⚠")
+                    st.toast(f"Sync con errores: {result.errors[0]}", icon="⚠️")
                 else:
-                    st.toast(f"{result.indexed_chunks} chunks indexados", icon="✓")
+                    st.toast(f"{result.indexed_chunks} chunks indexados", icon="✅")
                 st.rerun()
 
         if last_sync:
@@ -140,7 +145,11 @@ def render_sidebar() -> None:
 
         col_avatar, col_info = st.columns([1, 4])
         with col_avatar:
-            st.image(user.get("avatar", ""), width=34)
+            avatar = user.get("avatar", "")
+            if avatar:
+                st.image(avatar, width=34)
+            else:
+                st.markdown("<div style='width:34px;height:34px;border-radius:50%;background:#1D4ED8;display:flex;align-items:center;justify-content:center;font-size:1rem;'>👤</div>", unsafe_allow_html=True)
         with col_info:
             st.markdown(f"""
                 <div style='line-height:1.3; padding-top:2px;'>
@@ -155,5 +164,5 @@ def render_sidebar() -> None:
         _spacer(8)
 
         if st.button("🚪  Cerrar sesión", use_container_width=True, key="logout_btn"):
-            st.session_state.clear()
+            logout()
             st.rerun()

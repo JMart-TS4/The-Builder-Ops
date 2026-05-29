@@ -1,10 +1,11 @@
+import io
 import os
-from google.oauth2.credentials import Credentials
+
 from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
-import io
 
 from core.integrations.base import BaseIntegration, Document
 from config.settings import settings
@@ -12,16 +13,15 @@ from config.logging import get_logger
 
 logger = get_logger(__name__)
 
-SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
+SCOPES     = ["https://www.googleapis.com/auth/drive.readonly"]
 TOKEN_PATH = "credentials/gdrive_token.json"
 
-# Tipos de archivo soportados para extracción de texto
 SUPPORTED_MIME_TYPES = {
-    "application/vnd.google-apps.document": "text/plain",           # Google Docs
-    "application/vnd.google-apps.spreadsheet": "text/csv",          # Google Sheets
-    "application/vnd.google-apps.presentation": "text/plain",       # Google Slides
-    "application/pdf": None,                                         # PDF directo
-    "text/plain": None,                                              # TXT directo
+    "application/vnd.google-apps.document":     "text/plain",
+    "application/vnd.google-apps.spreadsheet":  "text/csv",
+    "application/vnd.google-apps.presentation": "text/plain",
+    "application/pdf": None,
+    "text/plain":      None,
 }
 
 
@@ -30,18 +30,16 @@ class GoogleDriveIntegration(BaseIntegration):
     def __init__(self):
         self._service = None
 
+    # ── Autenticación ─────────────────────────────────────────────────────────
+
     def _get_service(self):
-        """Inicializa o reutiliza el cliente autenticado de Drive."""
         if self._service:
             return self._service
 
         creds = None
-
-        # Token guardado de sesiones anteriores
         if os.path.exists(TOKEN_PATH):
             creds = Credentials.from_authorized_user_file(TOKEN_PATH, SCOPES)
 
-        # Refrescar o autenticar de nuevo
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
                 creds.refresh(Request())
@@ -54,8 +52,6 @@ class GoogleDriveIntegration(BaseIntegration):
                     prompt="select_account",
                     access_type="offline",
                 )
-
-            # Guardar token para la próxima vez
             with open(TOKEN_PATH, "w") as f:
                 f.write(creds.to_json())
 
@@ -63,99 +59,215 @@ class GoogleDriveIntegration(BaseIntegration):
         logger.info("Google Drive autenticado correctamente")
         return self._service
 
+    # ── Unidades Compartidas ──────────────────────────────────────────────────
+
+    def _get_shared_drives(self, service) -> list[dict]:
+        """Lista todas las Unidades Compartidas accesibles por la cuenta."""
+        drives = []
+        page_token = None
+        while True:
+            resp = service.drives().list(
+                pageSize=100,
+                fields="nextPageToken, drives(id, name)",
+                pageToken=page_token,
+            ).execute()
+            drives.extend(resp.get("drives", []))
+            page_token = resp.get("nextPageToken")
+            if not page_token:
+                break
+        logger.info(f"Google Drive: {len(drives)} unidades compartidas encontradas")
+        return drives
+
+    # ── Resolución de rutas de carpetas ───────────────────────────────────────
+
+    def _get_folders_in_drive(self, service, drive_id: str) -> dict[str, dict]:
+        """Pre-carga todas las carpetas de una unidad para resolver rutas sin API extra."""
+        folders: dict[str, dict] = {}
+        page_token = None
+        while True:
+            resp = service.files().list(
+                corpora="drive",
+                driveId=drive_id,
+                includeItemsFromAllDrives=True,
+                supportsAllDrives=True,
+                q="mimeType='application/vnd.google-apps.folder' and trashed=false",
+                fields="nextPageToken, files(id, name, parents)",
+                pageToken=page_token,
+            ).execute()
+            for f in resp.get("files", []):
+                folders[f["id"]] = {
+                    "name":    f["name"],
+                    "parents": f.get("parents", []),
+                }
+            page_token = resp.get("nextPageToken")
+            if not page_token:
+                break
+        return folders
+
+    def _resolve_folder_path(
+        self, parent_id: str, drive_id: str, folders: dict
+    ) -> str:
+        """Construye la ruta completa desde el parent hasta la raíz de la unidad."""
+        parts: list[str] = []
+        current_id = parent_id
+        visited: set[str] = set()
+        while current_id and current_id != drive_id and current_id not in visited:
+            visited.add(current_id)
+            folder = folders.get(current_id)
+            if not folder:
+                break
+            parts.append(folder["name"])
+            parents = folder.get("parents", [])
+            current_id = parents[0] if parents else None
+        return "/".join(reversed(parts))
+
+    # ── Extracción de texto ───────────────────────────────────────────────────
+
     def _extract_text(self, service, file_id: str, mime_type: str) -> str:
-        """Extrae el contenido de texto de un archivo de Drive."""
         try:
             export_mime = SUPPORTED_MIME_TYPES.get(mime_type)
 
             if export_mime:
-                # Archivos de Google Workspace — exportar como texto
                 response = service.files().export(
-                    fileId=file_id, mimeType=export_mime
+                    fileId=file_id,
+                    mimeType=export_mime,
                 ).execute()
                 return response.decode("utf-8") if isinstance(response, bytes) else response
 
-            elif mime_type == "text/plain":
-                # Archivos de texto plano — descargar directo
-                request = service.files().get_media(fileId=file_id)
-                buffer = io.BytesIO()
-                downloader = MediaIoBaseDownload(buffer, request)
+            else:
+                request = service.files().get_media(
+                    fileId=file_id,
+                    supportsAllDrives=True,
+                )
+                buf = io.BytesIO()
+                downloader = MediaIoBaseDownload(buf, request)
                 done = False
                 while not done:
                     _, done = downloader.next_chunk()
-                return buffer.getvalue().decode("utf-8")
+                raw = buf.getvalue()
+
+                if mime_type == "application/pdf":
+                    return self._extract_pdf_text(raw)
+                return raw.decode("utf-8", errors="ignore")
 
         except Exception as e:
             logger.warning(f"No se pudo extraer texto del archivo {file_id}: {e}")
 
         return ""
 
-    def fetch_documents(self, max_files: int = 50, since=None) -> list[Document]:
-        """Recupera y extrae texto de los archivos soportados en Drive.
+    def _extract_pdf_text(self, content: bytes) -> str:
+        try:
+            import pypdf
+            reader = pypdf.PdfReader(io.BytesIO(content))
+            return "\n".join(page.extract_text() or "" for page in reader.pages)
+        except ImportError:
+            logger.warning("pypdf no instalado — PDFs no serán indexados. Instalar con: uv add pypdf")
+        except Exception as e:
+            logger.warning(f"Error extrayendo texto de PDF: {e}")
+        return ""
 
-        Args:
-            max_files: Límite de archivos a traer.
-            since:     datetime opcional — filtra solo archivos modificados después de esta fecha.
+    # ── API pública ───────────────────────────────────────────────────────────
+
+    def fetch_documents(self, max_files: int = 200, since=None) -> list[Document]:
+        """Recupera documentos de todas las Unidades Compartidas.
+
+        Cada documento incluye `project` (nombre de la unidad) y
+        `folder_path` (ruta de subcarpetas dentro de la unidad).
         """
         service = self._get_service()
-        docs = []
+        docs: list[Document] = []
 
-        mime_filter = " or ".join(
-            [f"mimeType='{m}'" for m in SUPPORTED_MIME_TYPES.keys()]
-        )
-        query = f"({mime_filter}) and trashed=false"
+        shared_drives = self._get_shared_drives(service)
+        if not shared_drives:
+            logger.warning("No se encontraron Unidades Compartidas — verificar permisos.")
+
+        mime_filter = " or ".join(f"mimeType='{m}'" for m in SUPPORTED_MIME_TYPES)
+        base_query  = f"({mime_filter}) and trashed=false"
         if since is not None:
-            query += f" and modifiedTime > '{since.strftime('%Y-%m-%dT%H:%M:%SZ')}'"
+            base_query += f" and modifiedTime > '{since.strftime('%Y-%m-%dT%H:%M:%SZ')}'"
 
-        try:
-            results = service.files().list(
-                q=query,
-                pageSize=max_files,
-                fields="files(id, name, mimeType, webViewLink, modifiedTime)",
-            ).execute()
+        for drive in shared_drives:
+            drive_id   = drive["id"]
+            drive_name = drive["name"]
 
-            files = results.get("files", [])
-            logger.info(f"Google Drive: {len(files)} archivos encontrados")
+            folders = self._get_folders_in_drive(service, drive_id)
+            drive_docs: list[Document] = []
 
-            for file in files:
-                content = self._extract_text(
-                    service, file["id"], file["mimeType"]
-                )
-                if content.strip():
-                    docs.append(Document(
-                        content=content,
-                        source="google_drive",
-                        title=file.get("name", "Sin título"),
-                        url=file.get("webViewLink", ""),
-                        metadata={
-                            "file_id": file["id"],
-                            "mime_type": file["mimeType"],
-                            "modified": file.get("modifiedTime", ""),
-                        },
-                    ))
+            try:
+                page_token = None
+                while True:
+                    resp = service.files().list(
+                        corpora="drive",
+                        driveId=drive_id,
+                        includeItemsFromAllDrives=True,
+                        supportsAllDrives=True,
+                        q=base_query,
+                        pageSize=100,
+                        fields=(
+                            "nextPageToken, "
+                            "files(id, name, mimeType, webViewLink, modifiedTime, parents)"
+                        ),
+                        pageToken=page_token,
+                    ).execute()
 
-        except Exception as e:
-            logger.error(f"Error al recuperar archivos de Drive: {e}")
+                    for file in resp.get("files", []):
+                        content = self._extract_text(service, file["id"], file["mimeType"])
+                        if not content.strip():
+                            continue
 
-        logger.info(f"Google Drive: {len(docs)} documentos procesados")
+                        parents     = file.get("parents", [])
+                        folder_path = (
+                            self._resolve_folder_path(parents[0], drive_id, folders)
+                            if parents else ""
+                        )
+
+                        drive_docs.append(Document(
+                            content=content,
+                            source="google_drive",
+                            title=file.get("name", "Sin título"),
+                            url=file.get("webViewLink", ""),
+                            metadata={
+                                "file_id":     file["id"],
+                                "mime_type":   file["mimeType"],
+                                "modified":    file.get("modifiedTime", ""),
+                                "project":     drive_name,
+                                "drive_id":    drive_id,
+                                "folder_path": folder_path,
+                            },
+                        ))
+
+                    page_token = resp.get("nextPageToken")
+                    if not page_token or len(drive_docs) >= max_files:
+                        break
+
+            except Exception as e:
+                logger.error(f"Error al procesar unidad '{drive_name}': {e}")
+
+            docs.extend(drive_docs)
+            logger.info(f"Drive '{drive_name}': {len(drive_docs)} documentos procesados")
+
+        logger.info(
+            f"Google Drive total: {len(docs)} documentos "
+            f"de {len(shared_drives)} unidades compartidas"
+        )
         return docs
 
     def search(self, query: str) -> list[Document]:
-        """Busca archivos en Drive cuyo nombre o contenido coincida."""
+        """Búsqueda full-text en todas las Unidades Compartidas."""
         service = self._get_service()
-        docs = []
-
+        docs: list[Document] = []
         try:
             results = service.files().list(
+                corpora="allDrives",
+                includeItemsFromAllDrives=True,
+                supportsAllDrives=True,
                 q=f"fullText contains '{query}' and trashed=false",
                 pageSize=10,
                 fields="files(id, name, mimeType, webViewLink)",
             ).execute()
 
             for file in results.get("files", []):
-                content = self._extract_text(
-                    service, file["id"], file["mimeType"]
-                )
+                content = self._extract_text(service, file["id"], file["mimeType"])
                 if content.strip():
                     docs.append(Document(
                         content=content,

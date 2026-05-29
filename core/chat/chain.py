@@ -3,31 +3,18 @@ from langchain_core.runnables import Runnable
 
 from core.llm.factory import get_llm
 from core.chat.memory import get_session_history
-from core.chat.prompts import CHAT_PROMPT
+from core.chat.prompts import CHAT_PROMPT, CHAT_WITH_CONTEXT_PROMPT
 from config.logging import get_logger
 
 logger = get_logger(__name__)
 
 
-def build_chat_chain(provider: str | None = None) -> Runnable:
-    """Construye y retorna la cadena de chat con historial.
-
-    La cadena sigue el patrón LCEL (LangChain Expression Language):
-        prompt | llm
-
-    RunnableWithMessageHistory inyecta automáticamente el historial
-    de la sesión en cada llamada usando session_id.
-
-    Args:
-        provider: 'anthropic' | 'gemini' | None (usa default del .env)
-
-    Returns:
-        Cadena lista para invocar o hacer streaming.
-    """
+def build_chat_chain(provider: str | None = None, with_context: bool = False) -> Runnable:
     llm = get_llm(provider)
-    chain = CHAT_PROMPT | llm
+    prompt = CHAT_WITH_CONTEXT_PROMPT if with_context else CHAT_PROMPT
+    chain = prompt | llm
 
-    logger.info(f"Cadena de chat construida | proveedor={provider or 'default'}")
+    logger.info(f"Cadena de chat construida | proveedor={provider or 'default'} | rag={with_context}")
 
     return RunnableWithMessageHistory(
         chain,
