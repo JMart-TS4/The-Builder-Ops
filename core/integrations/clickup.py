@@ -2,6 +2,7 @@ import os
 import json
 import webbrowser
 import urllib.parse
+from datetime import datetime, timezone
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
 import requests
@@ -179,6 +180,99 @@ class ClickUpIntegration(BaseIntegration):
         comments = self._get(f"task/{task_id}/comment").get("comments", [])
         return [c.get("comment_text", "") for c in comments if c.get("comment_text")]
 
+    @staticmethod
+    def _format_date(ms_timestamp: str | int | None) -> str:
+        """Convierte un timestamp en milisegundos (ClickUp) a fecha legible DD/MM/YYYY."""
+        if not ms_timestamp:
+            return "Sin fecha"
+        try:
+            ts = int(ms_timestamp) / 1000
+            return datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%d/%m/%Y")
+        except (ValueError, OSError):
+            return "Fecha inválida"
+
+    @staticmethod
+    def _parse_custom_field_value(field: dict) -> str | None:
+        """Extrae el valor legible de un custom field de ClickUp según su tipo.
+
+        Retorna None si el campo no tiene valor asignado.
+        """
+        value = field.get("value")
+        field_type = field.get("type", "")
+        type_config = field.get("type_config") or {}
+
+        if value is None or value == "":
+            return None
+
+        # Texto plano, URL, email, teléfono
+        if field_type in ("text", "url", "email", "phone"):
+            return str(value)
+
+        # Número y moneda
+        if field_type in ("number", "currency"):
+            return str(value)
+
+        # Checkbox / boolean
+        if field_type == "checkbox":
+            return "Sí" if value else "No"
+
+        # Rating (número entero)
+        if field_type == "rating":
+            return str(value)
+
+        # Fecha (timestamp en ms)
+        if field_type == "date":
+            return ClickUpIntegration._format_date(value)
+
+        # Drop-down: value es el id de la opción seleccionada
+        if field_type == "drop_down":
+            options = type_config.get("options", [])
+            # ClickUp puede enviar el índice (int) o el id (str)
+            for opt in options:
+                if str(opt.get("id")) == str(value) or opt.get("orderindex") == value:
+                    return opt.get("name", str(value))
+            return str(value)
+
+        # Labels: value es una lista de ids de opciones
+        if field_type == "labels":
+            options = type_config.get("options", [])
+            id_to_label = {str(o.get("id")): o.get("label", "") for o in options}
+            if isinstance(value, list):
+                return ", ".join(id_to_label.get(str(v), str(v)) for v in value)
+            return str(value)
+
+        # Users / People: lista de objetos usuario
+        if field_type in ("users", "people"):
+            if isinstance(value, list):
+                return ", ".join(
+                    u.get("username") or u.get("email") or str(u)
+                    for u in value
+                    if isinstance(u, dict)
+                )
+            return str(value)
+
+        # Relaciones y tipos no contemplados: serializar como string
+        try:
+            return json.dumps(value, ensure_ascii=False)
+        except (TypeError, ValueError):
+            return str(value)
+
+    def _extract_custom_fields(self, task: dict) -> tuple[str, dict]:
+        """Devuelve (bloque_texto, dict_metadata) con todos los custom fields con valor."""
+        lines: list[str] = []
+        meta: dict[str, str] = {}
+
+        for field in task.get("custom_fields", []):
+            name = field.get("name", "Campo sin nombre")
+            parsed = self._parse_custom_field_value(field)
+            if parsed is None:
+                continue
+            lines.append(f"{name}: {parsed}")
+            meta[f"cf_{name.lower().replace(' ', '_')}"] = parsed
+
+        block = "\n".join(lines) if lines else "Sin campos personalizados"
+        return block, meta
+
     def _task_to_document(self, task: dict) -> Document:
         comments = self._get_comments(task["id"])
         comments_text = "\n".join(f"- {c}" for c in comments) if comments else "Sin comentarios"
@@ -186,11 +280,22 @@ class ClickUpIntegration(BaseIntegration):
             ", ".join(a.get("username", "") for a in task.get("assignees", []))
             or "Sin asignar"
         )
+        start_date = self._format_date(task.get("start_date"))
+        due_date = self._format_date(task.get("due_date"))
+        date_created = self._format_date(task.get("date_created"))
+        date_updated = self._format_date(task.get("date_updated"))
+        custom_fields_text, custom_fields_meta = self._extract_custom_fields(task)
+
         content = (
             f"Tarea: {task.get('name', '')}\n"
             f"Estado: {task.get('status', {}).get('status', 'desconocido')}\n"
             f"Prioridad: {task.get('priority', {}).get('priority', 'sin prioridad') if task.get('priority') else 'sin prioridad'}\n"
             f"Asignado a: {assignees}\n"
+            f"Fecha de inicio: {start_date}\n"
+            f"Fecha de vencimiento: {due_date}\n"
+            f"Creado el: {date_created}\n"
+            f"Última actualización: {date_updated}\n"
+            f"Campos personalizados:\n{custom_fields_text}\n"
             f"Descripción: {task.get('description') or 'Sin descripción'}\n"
             f"Comentarios:\n{comments_text}\n"
         )
@@ -203,6 +308,11 @@ class ClickUpIntegration(BaseIntegration):
                 "task_id": task["id"],
                 "status": task.get("status", {}).get("status", ""),
                 "list_id": task.get("list", {}).get("id", ""),
+                "start_date": start_date,
+                "due_date": due_date,
+                "date_created": date_created,
+                "date_updated": date_updated,
+                **custom_fields_meta,
             },
         )
 

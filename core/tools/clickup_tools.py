@@ -63,10 +63,14 @@ def make_clickup_tools(integration: "ClickUpIntegration") -> list:
                             )
                             folder = lst.get("folder_name", "")
                             location = f"{folder}/{lst.get('name', '')}" if folder else lst.get('name', '')
+                            due_date = integration._format_date(task.get("due_date"))
+                            start_date = integration._format_date(task.get("start_date"))
                             results.append(
                                 f"• [{task_status}] {task.get('name', '')} "
                                 f"| Prioridad: {priority} "
                                 f"| Asignado: {assignees} "
+                                f"| Inicio: {start_date} "
+                                f"| Vencimiento: {due_date} "
                                 f"| Lista: {location} "
                                 f"| {task.get('url', '')}"
                             )
@@ -101,9 +105,11 @@ def make_clickup_tools(integration: "ClickUpIntegration") -> list:
                             )
                             folder = lst.get("folder_name", "")
                             location = f"{folder}/{lst.get('name', '')}" if folder else lst.get('name', '')
+                            due_date = integration._format_date(task.get("due_date"))
                             results.append(
                                 f"• [{task_status}] {name} "
                                 f"| Asignado: {assignees} "
+                                f"| Vencimiento: {due_date} "
                                 f"| Lista: {location} "
                                 f"| {task.get('url', '')}"
                             )
@@ -128,8 +134,10 @@ def make_clickup_tools(integration: "ClickUpIntegration") -> list:
                         for task in integration._get_tasks(lst["id"]):
                             if nombre_tarea.lower() in task.get("name", "").lower():
                                 doc = integration._task_to_document(task)
+                                folder = lst.get("folder_name", "")
+                                location = f"{folder}/{lst.get('name', '')}" if folder else lst.get('name', '')
                                 return (
-                                    f"Lista: {lst.get('name', '')}\n"
+                                    f"Lista: {location}\n"
                                     f"{doc.content}"
                                     f"URL: {doc.url}"
                                 )
