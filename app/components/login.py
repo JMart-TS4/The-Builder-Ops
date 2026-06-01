@@ -17,112 +17,165 @@ logger = get_logger(__name__)
 
 _LOGIN_CSS = """
 <style>
-/* ── Hide sidebar on the login page ── */
+/* ── Hide sidebar ── */
 [data-testid="stSidebar"],
 [data-testid="stSidebarCollapseButton"],
 [data-testid="collapsedControl"] { display: none !important; }
 
-/* ── Center the login card ── */
+/* ── Layout: narrow centered column ── */
 .main .block-container {
-    max-width: 460px !important;
-    padding: 48px 2rem 40px !important;
+    max-width: 340px !important;
+    padding: 0 1rem !important;
     margin: 0 auto !important;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 100vh;
 }
 
-/* ── Step cards ── */
-.yilo-card {
-    background: linear-gradient(135deg, #0F1828 0%, #0D1A2E 100%);
-    border: 1px solid #1E3050;
-    border-radius: 14px;
-    padding: 18px 20px;
-    margin-bottom: 10px;
-    transition: border-color 0.3s ease, background 0.3s ease;
+/* ── Header ── */
+.login-header {
+    text-align: center;
+    margin-bottom: 44px;
 }
-.yilo-card.done {
-    border-color: rgba(34,197,94,0.55);
-    background: linear-gradient(135deg, rgba(34,197,94,0.06) 0%, #0D1A2E 100%);
-}
-.yilo-card.locked { opacity: 0.45; }
-
-.step-label {
-    font-size: 0.6rem;
-    font-weight: 700;
-    letter-spacing: 1.4px;
+.login-brand {
+    font-size: 0.5rem;
+    font-weight: 600;
+    letter-spacing: 3px;
     text-transform: uppercase;
-    color: #3A5070;
-    margin-bottom: 8px;
+    color: #1A2E48;
+    margin: 0 0 12px;
 }
-.card-title {
+.login-title {
+    font-size: 2.6rem;
+    font-weight: 700;
+    margin: 0 0 10px;
+    line-height: 1;
+    background: linear-gradient(135deg, #3B82F6, #0EA5E9);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -1px;
+}
+.login-sub {
+    font-size: 0.7rem;
+    color: #2E4860;
+    margin: 0;
+    letter-spacing: 0.2px;
+}
+
+/* ── Section label ── */
+.section-label {
+    font-size: 0.5rem;
+    font-weight: 600;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: #1A2E48;
+    margin: 0 0 10px;
+}
+
+/* ── Card: two-line info left, pill right ── */
+.yilo-card {
     display: flex;
     align-items: center;
-    gap: 9px;
-    margin-bottom: 6px;
+    justify-content: space-between;
+    background: #0C1522;
+    border: 1px solid #162336;
+    border-radius: 8px;
+    padding: 13px 14px;
+    margin-bottom: 20px;
+    transition: border-color 0.2s ease;
 }
-.card-title span { color: #C8D8F0; font-size: 0.88rem; font-weight: 500; }
-.status-ok   { color: #22C55E; font-size: 0.8rem; font-weight: 500; }
-.status-idle { color: #3A5070; font-size: 0.8rem; }
+.yilo-card.done   { border-color: rgba(34,197,94,0.3); }
+.yilo-card.locked { opacity: 0.3; pointer-events: none; }
 
-/* ── OAuth anchor buttons ── */
+.card-info { display: flex; align-items: center; gap: 11px; }
+.card-info img { opacity: 0.65; flex-shrink: 0; }
+
+.card-service {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #7A9BBD;
+    margin: 0 0 2px;
+    line-height: 1;
+}
+.card-desc {
+    font-size: 0.62rem;
+    color: #253A52;
+    margin: 0;
+    line-height: 1;
+}
+.card-desc.ok { color: rgba(34,197,94,0.7); }
+
+/* ── Pill buttons ── */
 .yilo-btn {
-    display: block;
-    width: 100%;
-    text-align: center;
-    padding: 9px 0;
-    border-radius: 10px;
-    font-size: 0.88rem;
-    font-weight: 600;
+    display: inline-block;
+    padding: 5px 11px;
+    border-radius: 5px;
+    font-size: 0.68rem;
+    font-weight: 500;
     text-decoration: none;
-    margin-bottom: 4px;
-    box-sizing: border-box;
-    transition: all 0.25s ease;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: background 0.15s ease;
+    letter-spacing: 0.1px;
 }
 .yilo-btn.active {
-    background: linear-gradient(135deg, #6C3FD4, #9B6DFF);
-    color: #fff !important;
+    background: #1D4ED8;
+    color: #D4E4FF !important;
     border: none;
-    box-shadow: 0 0 14px rgba(108,63,212,0.35);
 }
-.yilo-btn.active:hover {
-    background: linear-gradient(135deg, #7C4FE4, #AF8DFF);
-    box-shadow: 0 0 24px rgba(108,63,212,0.55);
-    transform: translateY(-1px);
-}
+.yilo-btn.active:hover { background: #2563EB; color: #fff !important; }
 .yilo-btn.done-btn {
-    background: rgba(34,197,94,0.1);
-    color: #22C55E !important;
-    border: 1px solid rgba(34,197,94,0.3);
+    background: transparent;
+    color: rgba(34,197,94,0.6) !important;
+    border: 1px solid rgba(34,197,94,0.15);
     cursor: default;
     pointer-events: none;
 }
 .yilo-btn.disabled-btn {
-    background: rgba(30,48,80,0.6);
-    color: #3A5070 !important;
-    border: 1px solid #1E3050;
+    background: transparent;
+    color: #1A2E48 !important;
+    border: 1px solid #162336;
     cursor: not-allowed;
     pointer-events: none;
 }
-.yilo-btn.enter {
-    padding: 11px 0;
-    font-size: 0.95rem;
-    margin-top: 6px;
+
+/* ── Enter button (Streamlit native) ── */
+div[data-testid="stButton"] > button[kind="primary"] {
+    height: 36px !important;
+    font-size: 0.75rem !important;
+    font-weight: 500 !important;
+    border-radius: 7px !important;
+    letter-spacing: 0.3px !important;
+    background: #1D4ED8 !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: #D4E4FF !important;
+}
+div[data-testid="stButton"] > button[kind="primary"]:hover {
+    background: #2563EB !important;
+    color: #fff !important;
+}
+div[data-testid="stButton"] > button[kind="primary"]:disabled {
+    background: transparent !important;
+    color: #1A2E48 !important;
+    border: 1px solid #162336 !important;
+    opacity: 1 !important;
 }
 </style>
 """
 
 
 def _auth_link(label: str, url: str) -> str:
-    """Return an active OAuth button as an HTML anchor (same-tab navigation)."""
-    return (
-        f"<a href='{url}' target='_self' class='yilo-btn active'>{label}</a>"
-    )
+    return f"<a href='{url}' target='_self' class='yilo-btn active'>{label}</a>"
 
 
 def _done_link(label: str) -> str:
-    return f"<div class='yilo-btn done-btn'>{label}</div>"
+    return f"<span class='yilo-btn done-btn'>{label}</span>"
 
 
 def _disabled_link(label: str) -> str:
-    return f"<div class='yilo-btn disabled-btn'>{label}</div>"
+    return f"<span class='yilo-btn disabled-btn'>{label}</span>"
 
 
 def _handle_callback() -> None:
@@ -216,80 +269,70 @@ def render_login() -> None:
     if err := st.session_state.pop("_oauth_error", None):
         st.error(err)
 
-    # ── Logo + title ──────────────────────────────────────────────────────
+    # ── Header ────────────────────────────────────────────────────────────
     st.markdown("""
-        <div style='text-align:center; padding:4px 0 28px;'>
-            <h1 style='
-                font-size:2.1rem; font-weight:800; margin:10px 0 4px;
-                background: linear-gradient(135deg,#6C3FD4,#9B6DFF);
-                -webkit-background-clip:text; -webkit-text-fill-color:transparent;
-                letter-spacing:-0.5px;
-            '>Yilo</h1>
-            <p style='color:#3A5070; font-size:0.86rem; margin:0;'>
-                El asistente empresarial inteligente de TS4
-            </p>
+        <div class='login-header'>
+            <p class='login-brand'>The Builder Ops</p>
+            <h1 class='login-title'>Yilo</h1>
+            <p class='login-sub'>El asistente Inteligente de TS4</p>
         </div>
-        <p style='color:#8AAAC8;font-size:0.82rem;text-align:center;margin-bottom:18px;'>
-            Conecta tus herramientas para comenzar
-        </p>
     """, unsafe_allow_html=True)
 
+    # ── Section label ─────────────────────────────────────────────────────
+    st.markdown("<p class='section-label'>Conectar cuentas</p>", unsafe_allow_html=True)
+
     # ── Paso 1 — Google ───────────────────────────────────────────────────
-    g_class  = "yilo-card done" if is_google else "yilo-card"
-    g_status = (
-        f"<span class='status-ok'>✓ Conectado como <strong>{user.get('name','')}</strong></span>"
-        if is_google else "<span class='status-idle'>No conectado</span>"
+    g_class = "yilo-card done" if is_google else "yilo-card"
+    g_desc  = (
+        f"<p class='card-desc ok'>conectado como {user.get('name', '—')}</p>"
+        if is_google else "<p class='card-desc'>identidad · Drive</p>"
     )
-    if is_google:
-        g_btn = _done_link("✓  Google conectado")
-    else:
-        g_btn = _auth_link("Continuar con Google", google_auth_url())
+    g_btn = _done_link("✓") if is_google else _auth_link("Conectar", google_auth_url())
 
     st.markdown(f"""
         <div class='{g_class}'>
-            <div class='step-label'>Paso 1</div>
-            <div class='card-title'>
-                <img src='https://www.google.com/favicon.ico'
-                     width='16' style='border-radius:3px;'/>
-                <span>Google — Identidad + Drive</span>
+            <div class='card-info'>
+                <img src='https://www.google.com/favicon.ico' width='15' style='border-radius:2px;'/>
+                <div class='card-text'>
+                    <p class='card-service'>Google</p>
+                    {g_desc}
+                </div>
             </div>
-            {g_status}
+            {g_btn}
         </div>
-        {g_btn}
-        <div style='height:10px'></div>
     """, unsafe_allow_html=True)
 
     # ── Paso 2 — ClickUp ──────────────────────────────────────────────────
     cu_class = "yilo-card done" if is_clickup else ("yilo-card" if is_google else "yilo-card locked")
-    cu_status = (
-        "<span class='status-ok'>✓ Conectado</span>"
-        if is_clickup else "<span class='status-idle'>No conectado</span>"
+    cu_desc  = (
+        "<p class='card-desc ok'>conectado</p>"
+        if is_clickup else "<p class='card-desc'>gestión de tareas</p>"
     )
     if is_clickup:
-        cu_btn = _done_link("✓  ClickUp conectado")
+        cu_btn = _done_link("✓")
     elif is_google:
-        cu_btn = _auth_link("Conectar ClickUp", clickup_auth_url())
+        cu_btn = _auth_link("Conectar", clickup_auth_url())
     else:
-        cu_btn = _disabled_link("Conectar ClickUp")
+        cu_btn = _disabled_link("Conectar")
 
     st.markdown(f"""
         <div class='{cu_class}'>
-            <div class='step-label'>Paso 2</div>
-            <div class='card-title'>
-                <img src='https://clickup.com/favicon.ico'
-                     width='16' style='border-radius:3px;'/>
-                <span>ClickUp — Tareas</span>
+            <div class='card-info'>
+                <img src='https://clickup.com/favicon.ico' width='15' style='border-radius:2px;'/>
+                <div class='card-text'>
+                    <p class='card-service'>ClickUp</p>
+                    {cu_desc}
+                </div>
             </div>
-            {cu_status}
+            {cu_btn}
         </div>
-        {cu_btn}
-        <div style='height:18px'></div>
+        <div style='height:22px'></div>
     """, unsafe_allow_html=True)
 
-    # ── Entrar a Yilo ─────────────────────────────────────────────────────
+    # ── Entrar ────────────────────────────────────────────────────────────
     both_done = is_google and is_clickup
     if st.button(
-        "Chatea con Yilo  →",
+        "Entrar →",
         use_container_width=True,
         type="primary",
         key="btn_enter",
