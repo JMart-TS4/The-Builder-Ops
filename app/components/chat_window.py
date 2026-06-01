@@ -29,10 +29,12 @@ _GLOBAL_CSS = """
 /* Burbuja de mensajes del bot */
 [data-testid="stMain"] div[data-testid="stHorizontalBlock"]
 > div[data-testid="column"]:nth-child(2) > div:first-child {
-    background: #0F1828;
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: linear-gradient(135deg, rgba(100,116,139,0.18), rgba(100,116,139,0.09));
+    border: 1px solid rgba(100,116,139,0.28);
     border-radius: 4px 14px 14px 14px;
-    padding: 12px 16px;
+    padding: 10px 14px;
+    font-size: 0.95rem;
+    line-height: 1.55;
 }
 
 /* Barra de progreso indeterminada */
