@@ -1,3 +1,4 @@
+import markdown as _md_lib
 import streamlit as st
 from app.session import get_active_conversation, update_conversation_title
 
@@ -26,17 +27,6 @@ _BOT_AVATAR_HTML = (
 # ── CSS global (inyectado una vez por sesión) ────────────────────────────────
 _GLOBAL_CSS = """
 <style>
-/* Burbuja de mensajes del bot */
-[data-testid="stMain"] div[data-testid="stHorizontalBlock"]
-> div[data-testid="column"]:nth-child(2) > div:first-child {
-    background: linear-gradient(135deg, rgba(100,116,139,0.18), rgba(100,116,139,0.09));
-    border: 1px solid rgba(100,116,139,0.28);
-    border-radius: 4px 14px 14px 14px;
-    padding: 10px 14px;
-    font-size: 0.95rem;
-    line-height: 1.55;
-}
-
 /* Barra de progreso indeterminada */
 @keyframes yilo-bar-a {
     0%   { left: -35%;  right: 100%; }
@@ -66,12 +56,11 @@ _GLOBAL_CSS = """
 """
 
 # ── Mensajes de bienvenida y usuario ────────────────────────────────────────
-WELCOME_MESSAGE = """¡Hola! Soy **Yilo**, el asistente inteligente de TS4
+WELCOME_MESSAGE = """¡Hola! Soy **Yilo** 👋
 
-Puedo ayudarte con:
-- Consultar documentos y archivos sobre tus proyectos
-- Revisar tareas y proyectos en ClickUp
-- Responder preguntas sobre tu operación
+- 📂 Consultar documentos y archivos de tus proyectos
+- ✅ Revisar tareas y proyectos en ClickUp
+- 💬 Responder preguntas sobre tu operación
 
 ¿En qué te puedo ayudar hoy?"""
 
@@ -87,6 +76,18 @@ USER_MSG_STYLE = (
     "font-size:0.95rem;"
     "line-height:1.55;"
     "text-align:left;"
+)
+
+BOT_MSG_STYLE = (
+    f"background:linear-gradient(135deg,rgba({_MUTED_RGB},0.18),rgba({_MUTED_RGB},0.09));"
+    f"border:1px solid rgba({_MUTED_RGB},0.28);"
+    "border-radius:4px 14px 14px 14px;"
+    "padding:10px 14px;"
+    f"color:{_TEXT};"
+    "font-size:0.95rem;"
+    "line-height:1.55;"
+    "display:flow-root;"
+    "margin-bottom:14px;"
 )
 
 # ── Metadatos de herramientas ────────────────────────────────────────────────
@@ -125,6 +126,10 @@ _TOOL_META: dict[str, dict] = {
 
 
 # ── Helpers de visualización ─────────────────────────────────────────────────
+
+def _md_to_html(text: str) -> str:
+    return _md_lib.markdown(text, extensions=["tables", "fenced_code"])
+
 
 def _inject_styles() -> None:
     if not st.session_state.get("_chat_css_injected"):
@@ -253,7 +258,10 @@ def _render_assistant_message(content: str) -> None:
     with col_av:
         st.markdown(_BOT_AVATAR_HTML, unsafe_allow_html=True)
     with col_msg:
-        st.markdown(content)
+        st.markdown(
+            f"<div style='{BOT_MSG_STYLE}'>{_md_to_html(content)}</div>",
+            unsafe_allow_html=True,
+        )
 
 
 def _render_user_message(content: str) -> None:
@@ -283,9 +291,15 @@ def render_chat() -> None:
     _inject_styles()
     conv = get_active_conversation()
 
-    # Mensaje de bienvenida
     if not conv["messages"]:
-        _render_assistant_message(WELCOME_MESSAGE)
+        col_av, col_msg = st.columns([1, 16], gap="small")
+        with col_av:
+            st.markdown(_BOT_AVATAR_HTML, unsafe_allow_html=True)
+        with col_msg:
+            st.markdown(
+                f"<div style='{BOT_MSG_STYLE}'>{_md_to_html(WELCOME_MESSAGE)}</div>",
+                unsafe_allow_html=True,
+            )
 
     # Historial
     for msg in conv["messages"]:
@@ -352,7 +366,10 @@ def render_chat() -> None:
                             full_response += chunk
                             placeholder.markdown(full_response + "▌")
 
-            placeholder.markdown(full_response)
+            placeholder.markdown(
+                f"<div style='{BOT_MSG_STYLE}'>{_md_to_html(full_response)}</div>",
+                unsafe_allow_html=True,
+            )
             response = full_response
 
         conv["messages"].append({"role": "assistant", "content": response})
