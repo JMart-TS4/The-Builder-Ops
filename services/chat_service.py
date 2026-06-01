@@ -121,26 +121,48 @@ class ChatService:
         self,
         message: str,
         session_id: str,
-    ) -> Generator[str, None, None]:
-        """El agente consulta Drive y ClickUp directamente via tools — sin contexto pre-fetched."""
+    ) -> Generator:
+        """El agente consulta Drive y ClickUp directamente via tools.
+
+        Yields dicts para eventos de herramientas y el output final:
+          {"type": "tool_start", "tool": str, "input": dict}
+          {"type": "tool_end",   "tool": str}
+          {"type": "output",     "text": str}
+        """
         history      = get_session_history(session_id)
         chat_history = list(history.messages)
+        output       = ""
 
         try:
-            result = self._agent.invoke(
+            for event in self._agent.stream(
                 {"input": message, "chat_history": chat_history}
-            )
-            output: str = _extract_text(result.get("output", ""))
+            ):
+                if "actions" in event:
+                    for action in event["actions"]:
+                        yield {
+                            "type":  "tool_start",
+                            "tool":  action.tool,
+                            "input": action.tool_input,
+                        }
+                elif "steps" in event:
+                    for step in event["steps"]:
+                        yield {"type": "tool_end", "tool": step.action.tool}
+                elif "output" in event:
+                    output = _extract_text(event["output"])
+                    yield {"type": "output", "text": output}
+
             history.add_user_message(message)
             history.add_ai_message(output)
             logger.info(
                 f"Agent completado | session_id={session_id[:8]}... "
                 f"| output_len={len(output)}"
             )
-            yield output
         except Exception as exc:
             logger.error(f"Error en agent | session_id={session_id[:8]}... | {exc}")
-            yield "Lo siento, ocurrió un error al procesar tu mensaje. Por favor intenta de nuevo."
+            yield {
+                "type": "output",
+                "text": "Lo siento, ocurrió un error al procesar tu mensaje. Por favor intenta de nuevo.",
+            }
 
     def _stream_chain(
         self,
