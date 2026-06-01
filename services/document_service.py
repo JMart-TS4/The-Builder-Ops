@@ -99,7 +99,7 @@ class DocumentService:
     def get_context(
         self,
         query: str,
-        k: int = 5,
+        k: int = 12,
         project_filter: str | None = None,
     ) -> str:
         """Recupera y formatea contexto relevante para una consulta.
