@@ -141,25 +141,38 @@ def render_sidebar() -> None:
         st.divider()
         _spacer(6)
 
-        user = st.session_state.get("current_user", {})
+        user   = st.session_state.get("current_user", {})
+        avatar = user.get("avatar", "")
+        name   = user.get("name", "")
+        email  = user.get("email", "")
 
-        col_avatar, col_info = st.columns([1, 4])
-        with col_avatar:
-            avatar = user.get("avatar", "")
-            if avatar:
-                st.image(avatar, width=34)
-            else:
-                st.markdown("<div style='width:34px;height:34px;border-radius:50%;background:#1D4ED8;display:flex;align-items:center;justify-content:center;font-size:1rem;'>👤</div>", unsafe_allow_html=True)
-        with col_info:
-            st.markdown(f"""
-                <div style='line-height:1.3; padding-top:2px;'>
-                    <div style='font-size:0.78rem; font-weight:600;
-                        color:#E8EEF8;'>{user.get("name", "")}</div>
-                    <div style='font-size:0.68rem; color:#3A5070;
-                        overflow:hidden; text-overflow:ellipsis;
-                        white-space:nowrap;'>{user.get("email", "")}</div>
+        if avatar:
+            avatar_html = (
+                f"<img src='{avatar}' width='32' height='32' "
+                f"style='border-radius:50%; object-fit:cover; flex-shrink:0;'/>"
+            )
+        else:
+            initial = name[0].upper() if name else "?"
+            avatar_html = (
+                f"<div style='width:32px;height:32px;border-radius:50%;"
+                f"background:#1D4ED8;display:flex;align-items:center;"
+                f"justify-content:center;font-size:0.8rem;color:#E8EEF8;"
+                f"flex-shrink:0;'>{initial}</div>"
+            )
+
+        st.markdown(f"""
+            <div style='display:flex; align-items:center; gap:10px;'>
+                {avatar_html}
+                <div style='overflow:hidden; min-width:0;'>
+                    <div style='font-size:0.78rem; font-weight:600; color:#E8EEF8;
+                        white-space:nowrap; overflow:hidden;
+                        text-overflow:ellipsis;'>{name}</div>
+                    <div style='font-size:0.65rem; color:#3A5070;
+                        white-space:nowrap; overflow:hidden;
+                        text-overflow:ellipsis;'>{email}</div>
                 </div>
-            """, unsafe_allow_html=True)
+            </div>
+        """, unsafe_allow_html=True)
 
         _spacer(8)
 
