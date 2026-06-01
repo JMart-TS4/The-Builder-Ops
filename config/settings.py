@@ -17,6 +17,10 @@ class Settings(BaseSettings):
         default="credentials/gdrive.json",
         alias="GOOGLE_DRIVE_CREDENTIALS_PATH"
     )
+    google_redirect_uri: str = Field(
+        default="http://localhost:8502",
+        alias="GOOGLE_REDIRECT_URI"
+    )
 
     # ClickUp OAuth
     clickup_client_id: str = Field(default="", alias="CLICKUP_CLIENT_ID")

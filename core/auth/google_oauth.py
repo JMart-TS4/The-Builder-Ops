@@ -1,10 +1,10 @@
 import json
 import secrets
 from pathlib import Path
+import requests as _requests
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import Flow
-from googleapiclient.discovery import build
 
 from config.settings import settings
 from config.logging import get_logger
@@ -17,9 +17,12 @@ SCOPES = [
     "https://www.googleapis.com/auth/userinfo.profile",
     "https://www.googleapis.com/auth/drive.readonly",
 ]
-REDIRECT_URI = "http://localhost:8501"
 TOKEN_PATH   = "credentials/gdrive_token.json"
 USER_PATH    = "credentials/google_user.json"
+
+
+def _redirect_uri() -> str:
+    return settings.google_redirect_uri
 
 
 def get_auth_url() -> str:
@@ -34,7 +37,7 @@ def get_auth_url() -> str:
     flow = Flow.from_client_secrets_file(
         settings.google_drive_credentials_path,
         scopes=SCOPES,
-        redirect_uri=REDIRECT_URI,
+        redirect_uri=_redirect_uri(),
         autogenerate_code_verifier=False,
     )
     auth_url, _ = flow.authorization_url(
@@ -56,18 +59,23 @@ def exchange_code(code: str) -> dict:
     flow = Flow.from_client_secrets_file(
         settings.google_drive_credentials_path,
         scopes=SCOPES,
-        redirect_uri=REDIRECT_URI,
+        redirect_uri=_redirect_uri(),
         autogenerate_code_verifier=False,
     )
-    flow.fetch_token(code=code)
+    flow.fetch_token(code=code, timeout=15)
     creds = flow.credentials
 
     Path("credentials").mkdir(exist_ok=True)
     with open(TOKEN_PATH, "w") as f:
         f.write(creds.to_json())
 
-    service   = build("oauth2", "v2", credentials=creds)
-    user_info = service.userinfo().get().execute()
+    resp = _requests.get(
+        "https://www.googleapis.com/oauth2/v2/userinfo",
+        headers={"Authorization": f"Bearer {creds.token}"},
+        timeout=10,
+    )
+    resp.raise_for_status()
+    user_info = resp.json()
 
     user = {
         "name":   user_info.get("name", ""),

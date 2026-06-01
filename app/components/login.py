@@ -127,40 +127,59 @@ def _disabled_link(label: str) -> str:
 
 def _handle_callback() -> None:
     """Detect OAuth callbacks in query params and exchange the code."""
-    code  = st.query_params.get("code")
-    state = st.query_params.get("state", "")
-    error = st.query_params.get("error")
 
+    # ── Pass 2: process a code saved from the previous run ───────────────
+    if "_pending_oauth_code" in st.session_state:
+        code  = st.session_state.pop("_pending_oauth_code")
+        state = st.session_state.pop("_pending_oauth_state", "")
+
+        if state.startswith("google_"):
+            with st.spinner("Conectando con Google..."):
+                try:
+                    user = google_exchange(code)
+                    st.session_state.google_connected = True
+                    st.session_state.current_user     = user
+                    logger.info(f"Google login OK | {user['email']}")
+                except Exception as exc:
+                    logger.error(f"Google exchange error: {exc}")
+                    st.session_state["_oauth_error"] = f"Error al conectar Google: {exc}"
+            st.rerun()
+            return
+
+        elif state.startswith("clickup_"):
+            with st.spinner("Conectando con ClickUp..."):
+                try:
+                    clickup_exchange(code)
+                    st.session_state.clickup_connected = True
+                    logger.info("ClickUp login OK")
+                except Exception as exc:
+                    logger.error(f"ClickUp exchange error: {exc}")
+                    st.session_state["_oauth_error"] = f"Error al conectar ClickUp: {exc}"
+            st.rerun()
+            return
+
+        else:
+            logger.warning(f"OAuth callback con state desconocido: {state!r}")
+            st.rerun()
+            return
+
+    # ── Pass 1: detect incoming redirect and stash the code ──────────────
+    error = st.query_params.get("error")
     if error:
         st.query_params.clear()
         st.session_state["_oauth_error"] = f"Autorización denegada: {error}"
         st.rerun()
+        return
 
+    code  = st.query_params.get("code")
+    state = st.query_params.get("state", "")
     if not code:
         return
 
+    st.session_state["_pending_oauth_code"]  = code
+    st.session_state["_pending_oauth_state"] = state
     st.query_params.clear()
-
-    if state.startswith("google_"):
-        try:
-            user = google_exchange(code)
-            st.session_state.google_connected = True
-            st.session_state.current_user     = user
-            logger.info(f"Google login OK | {user['email']}")
-        except Exception as exc:
-            logger.error(f"Google exchange error: {exc}")
-            st.session_state["_oauth_error"] = f"Error al conectar Google: {exc}"
-        st.rerun()
-
-    elif state.startswith("clickup_"):
-        try:
-            clickup_exchange(code)
-            st.session_state.clickup_connected = True
-            logger.info("ClickUp login OK")
-        except Exception as exc:
-            logger.error(f"ClickUp exchange error: {exc}")
-            st.session_state["_oauth_error"] = f"Error al conectar ClickUp: {exc}"
-        st.rerun()
+    st.rerun()
 
 
 def _init_from_disk() -> None:
@@ -200,7 +219,6 @@ def render_login() -> None:
     # ── Logo + title ──────────────────────────────────────────────────────
     st.markdown("""
         <div style='text-align:center; padding:4px 0 28px;'>
-            <div style='font-size:2.8rem; line-height:1;'>🤖</div>
             <h1 style='
                 font-size:2.1rem; font-weight:800; margin:10px 0 4px;
                 background: linear-gradient(135deg,#6C3FD4,#9B6DFF);
@@ -208,7 +226,7 @@ def render_login() -> None:
                 letter-spacing:-0.5px;
             '>Yilo</h1>
             <p style='color:#3A5070; font-size:0.86rem; margin:0;'>
-                Tu asistente empresarial inteligente
+                El asistente empresarial inteligente de TS4
             </p>
         </div>
         <p style='color:#8AAAC8;font-size:0.82rem;text-align:center;margin-bottom:18px;'>
@@ -271,7 +289,7 @@ def render_login() -> None:
     # ── Entrar a Yilo ─────────────────────────────────────────────────────
     both_done = is_google and is_clickup
     if st.button(
-        "Entrar a Yilo  →",
+        "Chatea con Yilo  →",
         use_container_width=True,
         type="primary",
         key="btn_enter",

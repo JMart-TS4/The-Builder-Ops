@@ -147,8 +147,23 @@ class ClickUpIntegration(BaseIntegration):
     def _get_spaces(self, team_id: str) -> list[dict]:
         return self._get(f"team/{team_id}/space", {"archived": False}).get("spaces", [])
 
+    def _get_folders(self, space_id: str) -> list[dict]:
+        return self._get(f"space/{space_id}/folder", {"archived": False}).get("folders", [])
+
+    def _get_lists_in_folder(self, folder_id: str) -> list[dict]:
+        return self._get(f"folder/{folder_id}/list", {"archived": False}).get("lists", [])
+
+    def _get_all_lists(self, space_id: str) -> list[dict]:
+        """Returns all lists in a space: folderless + lists inside folders."""
+        lists = self._get(f"space/{space_id}/list", {"archived": False}).get("lists", [])
+        for folder in self._get_folders(space_id):
+            for lst in self._get_lists_in_folder(folder["id"]):
+                lst.setdefault("folder_name", folder.get("name", ""))
+                lists.append(lst)
+        return lists
+
     def _get_lists(self, space_id: str) -> list[dict]:
-        return self._get(f"space/{space_id}/list", {"archived": False}).get("lists", [])
+        return self._get_all_lists(space_id)
 
     def _get_tasks(self, list_id: str, since=None) -> list[dict]:
         params = {

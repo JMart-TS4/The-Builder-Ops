@@ -21,10 +21,12 @@ def make_clickup_tools(integration: "ClickUpIntegration") -> list:
                 lines.append(f"Equipo: {team.get('name', team['id'])}")
                 for space in integration._get_spaces(team["id"]):
                     lines.append(f"  Espacio: {space.get('name', space['id'])}")
-                    for lst in integration._get_lists(space["id"]):
+                    for lst in integration._get_all_lists(space["id"]):
                         count = lst.get("task_count", "?")
+                        folder = lst.get("folder_name", "")
+                        prefix = f"    Carpeta: {folder} → Lista:" if folder else "    Lista:"
                         lines.append(
-                            f"    Lista: {lst.get('name', lst['id'])} "
+                            f"{prefix} {lst.get('name', lst['id'])} "
                             f"(tareas: {count})"
                         )
             return "\n".join(lines) if lines else "No se encontraron espacios en el workspace."
@@ -43,7 +45,7 @@ def make_clickup_tools(integration: "ClickUpIntegration") -> list:
             results: list[str] = []
             for team in integration._get_teams():
                 for space in integration._get_spaces(team["id"]):
-                    for lst in integration._get_lists(space["id"]):
+                    for lst in integration._get_all_lists(space["id"]):
                         if nombre_lista and nombre_lista.lower() not in lst.get("name", "").lower():
                             continue
                         for task in integration._get_tasks(lst["id"]):
@@ -59,11 +61,13 @@ def make_clickup_tools(integration: "ClickUpIntegration") -> list:
                                 if task.get("priority")
                                 else "sin prioridad"
                             )
+                            folder = lst.get("folder_name", "")
+                            location = f"{folder}/{lst.get('name', '')}" if folder else lst.get('name', '')
                             results.append(
                                 f"• [{task_status}] {task.get('name', '')} "
                                 f"| Prioridad: {priority} "
                                 f"| Asignado: {assignees} "
-                                f"| Lista: {lst.get('name', '')} "
+                                f"| Lista: {location} "
                                 f"| {task.get('url', '')}"
                             )
             if not results:
@@ -84,7 +88,7 @@ def make_clickup_tools(integration: "ClickUpIntegration") -> list:
             results: list[str] = []
             for team in integration._get_teams():
                 for space in integration._get_spaces(team["id"]):
-                    for lst in integration._get_lists(space["id"]):
+                    for lst in integration._get_all_lists(space["id"]):
                         for task in integration._get_tasks(lst["id"]):
                             name = task.get("name", "")
                             desc = task.get("description") or ""
@@ -95,10 +99,12 @@ def make_clickup_tools(integration: "ClickUpIntegration") -> list:
                                 ", ".join(a.get("username", "") for a in task.get("assignees", []))
                                 or "Sin asignar"
                             )
+                            folder = lst.get("folder_name", "")
+                            location = f"{folder}/{lst.get('name', '')}" if folder else lst.get('name', '')
                             results.append(
                                 f"• [{task_status}] {name} "
                                 f"| Asignado: {assignees} "
-                                f"| Lista: {lst.get('name', '')} "
+                                f"| Lista: {location} "
                                 f"| {task.get('url', '')}"
                             )
             if not results:
@@ -118,7 +124,7 @@ def make_clickup_tools(integration: "ClickUpIntegration") -> list:
         try:
             for team in integration._get_teams():
                 for space in integration._get_spaces(team["id"]):
-                    for lst in integration._get_lists(space["id"]):
+                    for lst in integration._get_all_lists(space["id"]):
                         for task in integration._get_tasks(lst["id"]):
                             if nombre_tarea.lower() in task.get("name", "").lower():
                                 doc = integration._task_to_document(task)
