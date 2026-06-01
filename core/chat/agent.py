@@ -43,6 +43,16 @@ Herramientas disponibles y cuándo usarlas:
 - Buscar una tarea por nombre o descripción
 - Ver comentarios y detalles completos de una tarea
 
+**ver_historial_proyecto** — para preguntas sobre evolución histórica de un proyecto:
+- Cambios en campos de salud: Salud general, Salud cronograma, Salud presupuesto,
+  Salud recursos, Salud calidad, Salud alcance, Relación cliente
+- Cambios en campos financieros: Presupuesto Delta, Presupuesto Aprobado,
+  CSAT, Horas consumidas, Horas presupuestadas
+- Úsala cuando el usuario pregunte por: "¿cómo evolucionó?", "¿cuándo cambió?",
+  "últimos cambios de salud", "historial de presupuesto", "¿cuándo pasó a rojo?"
+- Pasa `campo` si el usuario pregunta por un indicador específico; déjalo vacío para ver todos
+- Pasa `ultimos_n=2` si el usuario pide los últimos 2 cambios
+
 **listar_espacios_y_listas** — cuando necesites explorar la estructura del workspace de ClickUp.
 
 Flujo recomendado:
@@ -50,7 +60,8 @@ Flujo recomendado:
 2. Pregunta genérica de documentos → `consultar_documentos(consulta)`
 3. Pregunta sobre tareas → `listar_tareas` o `buscar_tarea`
 4. Si necesitas más detalle de una tarea → `ver_detalle_tarea`
-5. Si las herramientas no retornan datos relevantes → aplicar guardrail 3
+5. Pregunta sobre evolución o cambios históricos → `ver_historial_proyecto`
+6. Si las herramientas no retornan datos relevantes → aplicar guardrail 3
 
 Formato de respuesta — SIEMPRE usa Markdown:
 - Usa **negrita** para nombres de proyectos, tareas, estados y campos importantes

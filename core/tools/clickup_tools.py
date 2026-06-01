@@ -145,4 +145,56 @@ def make_clickup_tools(integration: "ClickUpIntegration") -> list:
         except Exception as exc:
             return f"Error al obtener detalle de la tarea: {exc}"
 
-    return [listar_espacios_y_listas, listar_tareas, buscar_tarea, ver_detalle_tarea]
+    @tool
+    def ver_historial_proyecto(
+        nombre_proyecto: str,
+        campo: str = "",
+        ultimos_n: int = 5,
+    ) -> str:
+        """Muestra el historial de cambios de campos de salud y financieros de un proyecto.
+
+        Úsala cuando el usuario pregunte por la evolución, cambios o historial de:
+        salud general, salud cronograma, salud presupuesto, salud recursos, salud calidad,
+        salud alcance, relación cliente, CSAT, presupuesto delta, presupuesto aprobado,
+        horas consumidas o horas presupuestadas.
+
+        Parámetros:
+        - nombre_proyecto: nombre parcial del proyecto o lista a consultar.
+        - campo: campo específico a filtrar (opcional). Dejar vacío para ver todos los
+          campos de salud y financieros. Ejemplos: "Salud general", "CSAT", "Presupuesto Delta".
+        - ultimos_n: cantidad de cambios recientes a mostrar (por defecto 5).
+        """
+        try:
+            campos_filtro = {campo.lower()} if campo.strip() else None
+            events = integration.get_field_history(
+                project_name=nombre_proyecto,
+                campos=campos_filtro,
+                ultimos_n=ultimos_n,
+            )
+
+            if not events:
+                return (
+                    f"No se encontraron cambios registrados en campos de salud o "
+                    f"financieros para el proyecto '{nombre_proyecto}'."
+                )
+
+            lines = [
+                f"Últimos {len(events)} cambio(s) en '{nombre_proyecto}':\n"
+            ]
+            for e in events:
+                lines.append(
+                    f"• [{e['fecha']}] **{e['campo']}**: {e['antes']} → {e['después']}"
+                    f"  | Por: {e['usuario']}  | Tarea: {e['tarea']}"
+                )
+            return "\n".join(lines)
+
+        except Exception as exc:
+            return f"Error al recuperar historial: {exc}"
+
+    return [
+        listar_espacios_y_listas,
+        listar_tareas,
+        buscar_tarea,
+        ver_detalle_tarea,
+        ver_historial_proyecto,
+    ]

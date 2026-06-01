@@ -317,6 +317,114 @@ class ClickUpIntegration(BaseIntegration):
         )
 
     # ------------------------------------------------------------------
+    # Historial de campos
+    # ------------------------------------------------------------------
+
+    # Campos de interés para seguimiento histórico
+    CAMPOS_HISTORICO = {
+        "salud general", "salud cronograma", "salud presupuesto",
+        "salud recursos", "salud calidad", "salud alcance",
+        "relación cliente", "relacion cliente",
+        "presupuesto delta", "presupuesto aprobado",
+        "csat", "horas consumidas", "horas presupuestadas",
+    }
+
+    def _get_task_history(self, task_id: str) -> list[dict]:
+        return self._get(f"task/{task_id}/activity").get("history", [])
+
+    def _parse_history_entry(self, entry: dict) -> dict | None:
+        """Extrae un registro legible de un evento de historial de ClickUp.
+
+        Retorna None si el campo no está en CAMPOS_HISTORICO o no tiene valores.
+        """
+        field_name = (
+            (entry.get("custom_field") or {}).get("name")
+            or entry.get("field", "")
+        ).strip()
+
+        if field_name.lower() not in self.CAMPOS_HISTORICO:
+            return None
+
+        def _resolve(raw) -> str:
+            if raw is None:
+                return "—"
+            if isinstance(raw, dict):
+                # Dropdown resuelto: puede venir en 'status', 'name' o 'value'
+                return (
+                    raw.get("status")
+                    or raw.get("name")
+                    or raw.get("value")
+                    or str(raw)
+                )
+            return str(raw)
+
+        before = _resolve(entry.get("before"))
+        after = _resolve(entry.get("after"))
+
+        if before == after:
+            return None
+
+        user = (entry.get("user") or {}).get("username", "desconocido")
+        date = self._format_date(entry.get("date"))
+
+        return {
+            "campo": field_name,
+            "antes": before,
+            "después": after,
+            "fecha": date,
+            "usuario": user,
+        }
+
+    def get_field_history(
+        self,
+        project_name: str,
+        campos: set[str] | None = None,
+        ultimos_n: int = 5,
+    ) -> list[dict]:
+        """Recupera el historial de cambios de campos de salud y financieros
+        para todas las tareas de tipo Control que coincidan con `project_name`.
+
+        Args:
+            project_name: nombre parcial del proyecto a buscar.
+            campos: subconjunto de CAMPOS_HISTORICO a filtrar. None = todos.
+            ultimos_n: cuántos cambios recientes retornar por campo.
+        """
+        filtro = {c.lower() for c in campos} if campos else self.CAMPOS_HISTORICO
+        events: list[dict] = []
+
+        for team in self._get_teams():
+            for space in self._get_spaces(team["id"]):
+                for lst in self._get_all_lists(space["id"]):
+                    for task in self._get_tasks(lst["id"]):
+                        # Solo tareas del proyecto buscado
+                        if project_name.lower() not in task.get("name", "").lower():
+                            # También buscar en el nombre de la lista/folder
+                            list_name = lst.get("name", "")
+                            folder_name = lst.get("folder_name", "")
+                            location = f"{folder_name} {list_name}".lower()
+                            if project_name.lower() not in location:
+                                continue
+
+                        # Solo ítems de tipo Control
+                        tipo = ""
+                        for cf in task.get("custom_fields", []):
+                            if cf.get("name", "").lower() == "tipo de item":
+                                tipo = self._parse_custom_field_value(cf) or ""
+                                break
+                        if tipo.lower() not in ("control", ""):
+                            continue
+
+                        for entry in self._get_task_history(task["id"]):
+                            parsed = self._parse_history_entry(entry)
+                            if parsed and parsed["campo"].lower() in filtro:
+                                parsed["tarea"] = task.get("name", "")
+                                events.append(parsed)
+
+        # Ordenar por fecha descendente y limitar
+        events.sort(key=lambda e: e["fecha"], reverse=True)
+        return events[:ultimos_n]
+
+    # ------------------------------------------------------------------
     # BaseIntegration interface
     # ------------------------------------------------------------------
 
