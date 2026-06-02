@@ -38,8 +38,10 @@ class ChatService:
         provider: str | None = None,
         clickup_integration=None,
         doc_service=None,
+        user_name: str = "",
     ):
         self.provider      = provider
+        self._user_name    = user_name
         self._doc_service  = doc_service
         self._chain        = build_chat_chain(provider, with_context=False)
         self._chain_rag    = build_chat_chain(provider, with_context=True)
@@ -78,7 +80,7 @@ class ChatService:
 
         try:
             from core.chat.agent import build_agent_executor
-            self._agent = build_agent_executor(provider, tools)
+            self._agent = build_agent_executor(provider, tools, self._user_name)
         except Exception as exc:
             logger.error(f"No se pudo inicializar el agente: {exc}")
 

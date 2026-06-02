@@ -56,7 +56,11 @@ _GLOBAL_CSS = """
 """
 
 # ── Mensajes de bienvenida y usuario ────────────────────────────────────────
-WELCOME_MESSAGE = """¡Hola! Soy **Yilo** 👋
+def _welcome_message() -> str:
+    user = st.session_state.get("current_user", {})
+    name = user.get("name", "").split()[0] if user.get("name") else ""
+    greeting = f"¡Hola, **{name}**! Soy **Yilo** 👋" if name else "¡Hola! Soy **Yilo** 👋"
+    return f"""{greeting}
 
 - 📂 Consultar documentos y archivos de tus proyectos
 - ✅ Revisar tareas y proyectos en ClickUp
@@ -297,7 +301,7 @@ def render_chat() -> None:
             st.markdown(_BOT_AVATAR_HTML, unsafe_allow_html=True)
         with col_msg:
             st.markdown(
-                f"<div style='{BOT_MSG_STYLE}'>{_md_to_html(WELCOME_MESSAGE)}</div>",
+                f"<div style='{BOT_MSG_STYLE}'>{_md_to_html(_welcome_message())}</div>",
                 unsafe_allow_html=True,
             )
 

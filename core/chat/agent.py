@@ -6,8 +6,8 @@ from config.logging import get_logger
 
 logger = get_logger(__name__)
 
-_AGENT_SYSTEM = """Eres Yilo, asistente informativo de TS4.
-
+_AGENT_SYSTEM_TEMPLATE = """Eres Yilo, asistente informativo de TS4.
+{user_greeting}
 Tu única función es responder preguntas basándote EXCLUSIVAMENTE en la información \
 que recuperes a través de las herramientas disponibles (Google Drive y ClickUp). \
 No posees conocimiento general ni acceso a información externa.
@@ -78,17 +78,29 @@ Lineamientos adicionales:
 - Nunca inventes datos, fechas, nombres o estados
 """
 
-AGENT_PROMPT = ChatPromptTemplate.from_messages([
-    ("system", _AGENT_SYSTEM),
-    MessagesPlaceholder("chat_history"),
-    ("human", "{input}"),
-    MessagesPlaceholder("agent_scratchpad"),
-])
+def _build_prompt(user_name: str = "") -> ChatPromptTemplate:
+    greeting = (
+        f"El usuario con quien estás hablando se llama **{user_name}**. "
+        "Dirígete a él/ella por su nombre cuando sea natural hacerlo.\n"
+        if user_name else ""
+    )
+    system = _AGENT_SYSTEM_TEMPLATE.format(user_greeting=greeting)
+    return ChatPromptTemplate.from_messages([
+        ("system", system),
+        MessagesPlaceholder("chat_history"),
+        ("human", "{input}"),
+        MessagesPlaceholder("agent_scratchpad"),
+    ])
 
 
-def build_agent_executor(provider: str | None, tools: list) -> AgentExecutor:
-    llm    = get_llm(provider)
-    agent  = create_tool_calling_agent(llm, tools, AGENT_PROMPT)
+def build_agent_executor(
+    provider: str | None,
+    tools: list,
+    user_name: str = "",
+) -> AgentExecutor:
+    llm      = get_llm(provider)
+    prompt   = _build_prompt(user_name)
+    agent    = create_tool_calling_agent(llm, tools, prompt)
     executor = AgentExecutor(
         agent=agent,
         tools=tools,
@@ -98,6 +110,6 @@ def build_agent_executor(provider: str | None, tools: list) -> AgentExecutor:
     )
     logger.info(
         f"AgentExecutor construido | proveedor={provider or 'default'} "
-        f"| tools={[t.name for t in tools]}"
+        f"| tools={[t.name for t in tools]} | user={user_name or 'anon'}"
     )
     return executor

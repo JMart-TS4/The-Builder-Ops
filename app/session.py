@@ -70,10 +70,12 @@ def init_session() -> None:
 
     # ChatService — incluye herramientas de ClickUp y Drive si están disponibles
     if "chat_service" not in st.session_state:
+        user_name = st.session_state.current_user.get("name", "")
         st.session_state.chat_service = ChatService(
             provider=st.session_state.llm_provider,
             clickup_integration=st.session_state.clickup_integration,
             doc_service=st.session_state.doc_service,
+            user_name=user_name,
         )
 
     if "conversations" not in st.session_state:
