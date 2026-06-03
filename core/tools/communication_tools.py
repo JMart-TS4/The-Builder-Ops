@@ -1,21 +1,9 @@
 from langchain_core.tools import tool
 
-_TONOS_CORREO = {
-    "formal": {
-        "saludo": "Estimado/a {destinatario}",
-        "cierre": "Quedo a su disposición para cualquier consulta.\n\nAtentamente,",
-    },
-    "amigable": {
-        "saludo": "Hola {destinatario}",
-        "cierre": "Cualquier duda, con gusto te ayudo.\n\n¡Saludos!",
-    },
-    "ejecutivo": {
-        "saludo": "{destinatario}",
-        "cierre": "Quedo disponible.\n\nSaludos,",
-    },
-}
-
 _SEPARADOR = "─" * 60
+
+_SALUDO_CORREO = "{destinatario},"
+_CIERRE_CORREO = "Quedo disponible para cualquier consulta.\n\nAtentamente,"
 
 
 def make_communication_tools() -> list:
@@ -26,36 +14,35 @@ def make_communication_tools() -> list:
         destinatario: str,
         asunto: str,
         cuerpo: str,
-        tono: str = "formal",
         remitente: str = "",
     ) -> str:
-        """Genera una plantilla de correo electrónico profesional lista para enviar.
+        """Genera una plantilla de correo electrónico ejecutivo lista para enviar.
 
         Úsala DESPUÉS de consultar la información relevante en Drive o ClickUp,
         cuando el usuario pida redactar, preparar o crear un correo para un cliente.
 
+        El correo siempre usa tono ejecutivo: directo, conciso, sin emojis y profesional.
+
         Args:
             destinatario: Nombre o empresa a quien va dirigido el correo.
-            asunto: Línea de asunto del correo.
+            asunto: Línea de asunto del correo. Debe ser clara y directa.
             cuerpo: Contenido principal del correo con la información ya redactada.
-                    Incluye todos los puntos, datos o actualizaciones necesarios.
-            tono: Tono del correo. Opciones: "formal" (por defecto), "amigable", "ejecutivo".
+                    Debe ser conciso, sin relleno y orientado al cliente.
+                    Evita emojis, frases de relleno y lenguaje informal.
             remitente: Nombre del remitente. Dejar vacío si no se especifica.
         """
-        estilo = _TONOS_CORREO.get(tono.lower(), _TONOS_CORREO["formal"])
-        saludo = estilo["saludo"].format(destinatario=destinatario)
-        cierre = estilo["cierre"]
+        saludo = _SALUDO_CORREO.format(destinatario=destinatario)
         firma  = f"\n{remitente}" if remitente else ""
 
         plantilla = (
-            f"📧 **PLANTILLA DE CORREO**\n"
+            f"PLANTILLA DE CORREO\n"
             f"{_SEPARADOR}\n"
-            f"**Para:** {destinatario}\n"
-            f"**Asunto:** {asunto}\n"
+            f"Para: {destinatario}\n"
+            f"Asunto: {asunto}\n"
             f"{_SEPARADOR}\n\n"
-            f"{saludo},\n\n"
+            f"{saludo}\n\n"
             f"{cuerpo}\n\n"
-            f"{cierre}{firma}\n"
+            f"{_CIERRE_CORREO}{firma}\n"
             f"{_SEPARADOR}"
         )
         return plantilla
@@ -76,23 +63,21 @@ def make_communication_tools() -> list:
         Args:
             destinatario: Nombre o empresa destinataria del mensaje.
             contenido: Texto principal del mensaje con la información a comunicar.
+                       Debe ser directo, sin emojis y profesional.
             canal: Canal de envío. Opciones: "whatsapp", "slack", "teams", "general"
-                   (por defecto). Ajusta el tono y formato del mensaje.
+                   (por defecto).
         """
         canal_l = canal.lower()
 
-        if canal_l == "whatsapp":
-            encabezado = f"Hola {destinatario} 👋"
-            pie        = "_Quedamos atentos ante cualquier consulta._"
-        elif canal_l in ("slack", "teams"):
-            encabezado = f"Hola @{destinatario}"
-            pie        = "Cualquier duda, avísanos."
+        if canal_l in ("slack", "teams"):
+            encabezado = f"@{destinatario}"
         else:
-            encabezado = f"Hola {destinatario},"
-            pie        = "Quedamos a tu disposición."
+            encabezado = f"{destinatario},"
+
+        pie = "Quedamos a su disposición ante cualquier consulta."
 
         plantilla = (
-            f"💬 **MENSAJE PARA CLIENTE** *(vía {canal.capitalize()})*\n"
+            f"MENSAJE PARA CLIENTE (via {canal.capitalize()})\n"
             f"{_SEPARADOR}\n"
             f"{encabezado}\n\n"
             f"{contenido}\n\n"

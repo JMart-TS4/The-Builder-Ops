@@ -59,14 +59,19 @@ _GLOBAL_CSS = """
 def _welcome_message() -> str:
     user = st.session_state.get("current_user", {})
     name = user.get("name", "").split()[0] if user.get("name") else ""
-    greeting = f"¡Hola, **{name}**! Soy **Yilo** 👋" if name else "¡Hola! Soy **Yilo** 👋"
-    return f"""{greeting}
+    greeting = f"¡Hola, **{name}**!" if name else "¡Hola!"
+    return f"""{greeting} Soy **Yilo**, el asistente de visibilidad operativa de TS4.
 
-- 📂 Consultar documentos y archivos de tus proyectos
-- ✅ Revisar tareas y proyectos en ClickUp
-- 💬 Responder preguntas sobre tu operación
+Estoy conectado en tiempo real a **ClickUp** y **Google Drive**, así que puedo responderte con información actualizada sobre cualquier proyecto del portafolio, sin que tengas que buscar en múltiples herramientas.
 
-¿En qué te puedo ayudar hoy?"""
+Puedes preguntarme cosas como:
+
+- ¿Cuál es el estado de salud del portafolio esta semana?
+- ¿Qué riesgos críticos siguen abiertos en [nombre del proyecto]?
+- ¿Hay hitos próximos que todavía estén pendientes?
+- Redacta un correo de actualización para el cliente de [proyecto].
+
+¿Con qué proyecto o iniciativa quieres empezar?"""
 
 USER_BUBBLE_STYLE = "display:flex;justify-content:flex-end;margin-bottom:14px;"
 
