@@ -4,7 +4,7 @@ from config.logging import get_logger
 
 logger = get_logger(__name__)
 
-TOP_K = 12
+TOP_K = 10
 
 
 def retrieve(
