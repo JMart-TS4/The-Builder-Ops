@@ -132,6 +132,12 @@ class ClickUpIntegration(BaseIntegration):
             )
             r.raise_for_status()
             return r.json()
+        except requests.exceptions.HTTPError as e:
+            if e.response is not None and e.response.status_code == 404:
+                logger.debug(f"Recurso no encontrado en ClickUp [{endpoint}]")
+            else:
+                logger.error(f"Error en petición ClickUp [{endpoint}]: {e}")
+            return {}
         except requests.RequestException as e:
             logger.error(f"Error en petición ClickUp [{endpoint}]: {e}")
             return {}
