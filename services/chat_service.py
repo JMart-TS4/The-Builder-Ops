@@ -79,6 +79,12 @@ class ChatService:
             return
 
         try:
+            from core.tools.communication_tools import make_communication_tools
+            tools.extend(make_communication_tools())
+        except Exception as exc:
+            logger.error(f"No se pudieron cargar herramientas de comunicación: {exc}")
+
+        try:
             from core.chat.agent import build_agent_executor
             self._agent = build_agent_executor(provider, tools, self._user_name)
         except Exception as exc:

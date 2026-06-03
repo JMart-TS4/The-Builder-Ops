@@ -418,6 +418,7 @@ class ClickUpIntegration(BaseIntegration):
                             parsed = self._parse_history_entry(entry)
                             if parsed and parsed["campo"].lower() in filtro:
                                 parsed["tarea"] = task.get("name", "")
+                                parsed["url"]   = task.get("url", "")
                                 events.append(parsed)
 
         # Ordenar por fecha descendente y limitar

@@ -182,9 +182,10 @@ def make_clickup_tools(integration: "ClickUpIntegration") -> list:
                 f"Últimos {len(events)} cambio(s) en '{nombre_proyecto}':\n"
             ]
             for e in events:
+                url_part = f"  | {e['url']}" if e.get("url") else ""
                 lines.append(
                     f"• [{e['fecha']}] **{e['campo']}**: {e['antes']} → {e['después']}"
-                    f"  | Por: {e['usuario']}  | Tarea: {e['tarea']}"
+                    f"  | Por: {e['usuario']}  | Tarea: {e['tarea']}{url_part}"
                 )
             return "\n".join(lines)
 

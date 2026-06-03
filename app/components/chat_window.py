@@ -126,6 +126,16 @@ _TOOL_META: dict[str, dict] = {
         "source": "Google Drive",
         "rgb":    _DRIVE_COLOR,
     },
+    "crear_correo_cliente": {
+        "label":  "Redactando correo",
+        "source": "Comunicación",
+        "rgb":    "52, 211, 153",
+    },
+    "crear_mensaje_cliente": {
+        "label":  "Redactando mensaje",
+        "source": "Comunicación",
+        "rgb":    "52, 211, 153",
+    },
 }
 
 
