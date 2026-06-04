@@ -11,7 +11,8 @@ def _extract_text(value) -> str:
     """Normaliza la salida del agente a un string plano.
 
     langchain-anthropic puede devolver el output como bloques de contenido
-    crudos (list[dict] con 'type'/'text') en lugar de un string directo.
+    crudos (list[dict] con 'type'/'text') o como objetos Pydantic (TextBlock)
+    en lugar de un string directo.
     """
     if isinstance(value, str):
         return value
@@ -23,6 +24,14 @@ def _extract_text(value) -> str:
         for key in ("text", "content", "output"):
             if key in value:
                 return _extract_text(value[key])
+    # Objetos Pydantic del SDK de Anthropic (TextBlock, etc.)
+    try:
+        if getattr(value, "type", None) == "text" and hasattr(value, "text"):
+            return str(value.text)
+        if hasattr(value, "model_dump"):
+            return _extract_text(value.model_dump())
+    except Exception:
+        pass
     return str(value)
 
 

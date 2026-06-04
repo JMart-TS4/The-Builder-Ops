@@ -59,19 +59,19 @@ _GLOBAL_CSS = """
 def _welcome_message() -> str:
     user = st.session_state.get("current_user", {})
     name = user.get("name", "").split()[0] if user.get("name") else ""
-    greeting = f"¡Hola, **{name}**!" if name else "¡Hola!"
+    greeting = f"Hola, **{name}**." if name else "Hola."
     return f"""{greeting} Soy **Yilo**, el asistente de visibilidad operativa de TS4.
 
-Estoy conectado en tiempo real a **ClickUp** y **Google Drive**, así que puedo responderte con información actualizada sobre cualquier proyecto del portafolio, sin que tengas que buscar en múltiples herramientas.
+Estoy conectado en tiempo real a **ClickUp** y **Google Drive**, por lo que puedo darte información actualizada sobre cualquier proyecto del portafolio sin necesidad de consultar múltiples herramientas.
 
-Puedes preguntarme cosas como:
+Algunos ejemplos de lo que puedes preguntarme:
 
-- ¿Cuál es el estado de salud del portafolio esta semana?
-- ¿Qué riesgos críticos siguen abiertos en [nombre del proyecto]?
-- ¿Hay hitos próximos que todavía estén pendientes?
-- Redacta un correo de actualización para el cliente de [proyecto].
+- 📊 ¿Cuál es el estado de salud del portafolio esta semana?
+- ⚠️ ¿Qué riesgos críticos siguen abiertos en [nombre del proyecto]?
+- 📅 ¿Hay hitos próximos que todavía estén pendientes?
+- ✉️ Redacta un correo de actualización para el cliente de [proyecto].
 
-¿Con qué proyecto o iniciativa quieres empezar?"""
+¿Con qué proyecto o iniciativa quieres comenzar?"""
 
 USER_BUBBLE_STYLE = "display:flex;justify-content:flex-end;margin-bottom:14px;"
 
@@ -123,6 +123,16 @@ _TOOL_META: dict[str, dict] = {
     },
     "listar_espacios_y_listas": {
         "label":  "Explorando estructura del workspace",
+        "source": "ClickUp",
+        "rgb":    _PRIMARY,
+    },
+    "resolver_proyecto": {
+        "label":  "Buscando proyecto en ClickUp",
+        "source": "ClickUp",
+        "rgb":    _PRIMARY,
+    },
+    "consultar_campos_proyecto": {
+        "label":  "Consultando campos del proyecto",
         "source": "ClickUp",
         "rgb":    _PRIMARY,
     },

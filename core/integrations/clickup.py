@@ -1,5 +1,6 @@
 import os
 import json
+import unicodedata
 import webbrowser
 import urllib.parse
 from datetime import datetime, timezone
@@ -14,6 +15,44 @@ logger = get_logger(__name__)
 
 BASE_URL = "https://api.clickup.com/api/v2"
 TOKEN_DIR = "credentials"
+
+# ── Utilidades de matching fuzzy ─────────────────────────────────────────────
+
+_STOPWORDS = {
+    "de", "del", "la", "el", "los", "las", "en", "y", "a", "o", "que",
+    "con", "por", "para", "es", "son", "hay", "un", "una", "al", "lo",
+    "se", "su", "si", "no", "mas", "proyecto", "proyectos",
+}
+
+
+def _norm(texto: str) -> str:
+    """Minúsculas sin tildes."""
+    return unicodedata.normalize("NFD", texto.lower()).encode("ascii", "ignore").decode()
+
+
+def _keywords(texto: str) -> list[str]:
+    """Palabras significativas de un texto (sin stopwords, longitud > 1)."""
+    return [p for p in _norm(texto).split() if len(p) > 1 and p not in _STOPWORDS]
+
+
+def _match_score(query: str, *campos: str) -> int:
+    """Devuelve un score de coincidencia entre query y uno o más campos de texto.
+
+    - Coincidencia exacta de frase normalizada → score alto.
+    - Cada keyword de query que aparezca en algún campo suma 1.
+    - Sin coincidencia → 0.
+    """
+    q_norm = _norm(query)
+    haystack = _norm(" ".join(campos))
+
+    if q_norm in haystack:
+        return 100  # coincidencia exacta de frase
+
+    palabras = _keywords(query)
+    if not palabras:
+        return 1 if q_norm in haystack else 0
+
+    return sum(1 for p in palabras if p in haystack)
 
 
 class _OAuthCallbackHandler(BaseHTTPRequestHandler):
@@ -402,14 +441,15 @@ class ClickUpIntegration(BaseIntegration):
             for space in self._get_spaces(team["id"]):
                 for lst in self._get_all_lists(space["id"]):
                     for task in self._get_tasks(lst["id"]):
-                        # Solo tareas del proyecto buscado
-                        if project_name.lower() not in task.get("name", "").lower():
-                            # También buscar en el nombre de la lista/folder
-                            list_name = lst.get("name", "")
-                            folder_name = lst.get("folder_name", "")
-                            location = f"{folder_name} {list_name}".lower()
-                            if project_name.lower() not in location:
-                                continue
+                        # Coincidencia fuzzy: nombre de tarea + lista + folder
+                        score = _match_score(
+                            project_name,
+                            task.get("name", ""),
+                            lst.get("name", ""),
+                            lst.get("folder_name", ""),
+                        )
+                        if score == 0:
+                            continue
 
                         # Solo ítems de tipo Control
                         tipo = ""

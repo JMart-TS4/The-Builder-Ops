@@ -1,9 +1,43 @@
+import html as _html
+
 from langchain_core.tools import tool
 
 _SEPARADOR = "─" * 60
 
 _SALUDO_CORREO = "{destinatario},"
 _CIERRE_CORREO = "Quedo disponible para cualquier consulta.\n\nAtentamente,"
+
+_PRE_STYLE = (
+    "font-family:ui-monospace,'Courier New',monospace;"
+    "white-space:pre-wrap;"
+    "font-size:0.85rem;"
+    "line-height:1.55;"
+    "padding:14px 16px;"
+    "margin:8px 0 0 0;"
+    "background:rgba(52,211,153,0.06);"
+    "border-radius:6px;"
+    "border-left:3px solid rgba(52,211,153,0.5);"
+    "overflow-x:auto;"
+)
+
+
+def _coerce_str(value) -> str:
+    """Normaliza cualquier valor a string plano (maneja listas/dicts de Anthropic)."""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, list):
+        return "\n\n".join(_coerce_str(item) for item in value)
+    if isinstance(value, dict):
+        return value.get("text", str(value))
+    # Pydantic/SDK objects (TextBlock, etc.)
+    if hasattr(value, "text"):
+        return str(value.text)
+    return str(value)
+
+
+def _render_pre(text: str) -> str:
+    """Envuelve el texto en un bloque <pre> HTML con escape seguro."""
+    return f'<pre style="{_PRE_STYLE}">{_html.escape(text)}</pre>'
 
 
 def make_communication_tools() -> list:
@@ -31,6 +65,11 @@ def make_communication_tools() -> list:
                     Evita emojis, frases de relleno y lenguaje informal.
             remitente: Nombre del remitente. Dejar vacío si no se especifica.
         """
+        destinatario = _coerce_str(destinatario)
+        asunto       = _coerce_str(asunto)
+        cuerpo       = _coerce_str(cuerpo)
+        remitente    = _coerce_str(remitente)
+
         saludo = _SALUDO_CORREO.format(destinatario=destinatario)
         firma  = f"\n{remitente}" if remitente else ""
 
@@ -45,7 +84,7 @@ def make_communication_tools() -> list:
             f"{_CIERRE_CORREO}{firma}\n"
             f"{_SEPARADOR}"
         )
-        return plantilla
+        return _render_pre(plantilla)
 
     @tool
     def crear_mensaje_cliente(
@@ -67,6 +106,10 @@ def make_communication_tools() -> list:
             canal: Canal de envío. Opciones: "whatsapp", "slack", "teams", "general"
                    (por defecto).
         """
+        destinatario = _coerce_str(destinatario)
+        contenido    = _coerce_str(contenido)
+        canal        = _coerce_str(canal)
+
         canal_l = canal.lower()
 
         if canal_l in ("slack", "teams"):
@@ -84,6 +127,6 @@ def make_communication_tools() -> list:
             f"{pie}\n"
             f"{_SEPARADOR}"
         )
-        return plantilla
+        return _render_pre(plantilla)
 
     return [crear_correo_cliente, crear_mensaje_cliente]
