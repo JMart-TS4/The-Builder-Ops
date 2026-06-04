@@ -86,11 +86,13 @@ def render_sidebar() -> None:
             doc_service = st.session_state.get("doc_service")
             if doc_service:
                 with st.spinner("Sincronizando..."):
-                    result = doc_service.ingest_incremental()
+                    result = doc_service.ingest()
                 if result.errors:
                     st.toast(f"Sync con errores: {result.errors[0]}", icon="⚠️")
+                elif result.indexed_chunks == 0:
+                    st.toast("No se encontraron documentos para indexar", icon="⚠️")
                 else:
-                    st.toast(f"{result.indexed_chunks} chunks indexados", icon="✅")
+                    st.toast(f"{result.synced_docs} docs · {result.indexed_chunks} chunks indexados", icon="✅")
                 st.rerun()
 
         if last_sync:

@@ -45,16 +45,21 @@ class DocumentService:
         result.synced_docs = sync.total
         result.errors      = sync.errors
 
+        now = datetime.now(timezone.utc)
+
         if not sync.all_docs:
             logger.warning("Ingest: no se obtuvieron documentos de ninguna fuente")
+            save_last_sync(self._user_id, now)
             return result
 
         chunks = prepare_documents(sync.all_docs)
         if not chunks:
             logger.warning("Ingest: no se generaron chunks")
+            save_last_sync(self._user_id, now)
             return result
 
         result.indexed_chunks = ingest_documents(chunks, self._user_id)
+        save_last_sync(self._user_id, now)
 
         logger.info(
             f"Ingest completo | docs={result.synced_docs} "

@@ -17,11 +17,16 @@ SCOPES     = ["https://www.googleapis.com/auth/drive.readonly"]
 TOKEN_PATH = "credentials/gdrive_token.json"
 
 SUPPORTED_MIME_TYPES = {
+    # Google Workspace — se exportan vía Drive API
     "application/vnd.google-apps.document":     "text/plain",
     "application/vnd.google-apps.spreadsheet":  "text/csv",
     "application/vnd.google-apps.presentation": "text/plain",
-    "application/pdf": None,
-    "text/plain":      None,
+    # Binarios — se descargan y parsean localmente
+    "application/pdf":  None,
+    "text/plain":       None,
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document":  None,  # .docx
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":        None,  # .xlsx
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation": None, # .pptx
 }
 
 
@@ -134,21 +139,31 @@ class GoogleDriveIntegration(BaseIntegration):
                 ).execute()
                 return response.decode("utf-8") if isinstance(response, bytes) else response
 
-            else:
-                request = service.files().get_media(
-                    fileId=file_id,
-                    supportsAllDrives=True,
-                )
-                buf = io.BytesIO()
-                downloader = MediaIoBaseDownload(buf, request)
-                done = False
-                while not done:
-                    _, done = downloader.next_chunk()
-                raw = buf.getvalue()
+            # Descarga binaria + parser local según tipo
+            request = service.files().get_media(
+                fileId=file_id,
+                supportsAllDrives=True,
+            )
+            buf = io.BytesIO()
+            downloader = MediaIoBaseDownload(buf, request)
+            done = False
+            while not done:
+                _, done = downloader.next_chunk()
+            raw = buf.getvalue()
 
-                if mime_type == "application/pdf":
-                    return self._extract_pdf_text(raw)
-                return raw.decode("utf-8", errors="ignore")
+            _DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            _XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            _PPTX = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+
+            if mime_type == "application/pdf":
+                return self._extract_pdf_text(raw)
+            if mime_type == _DOCX:
+                return self._extract_docx_text(raw)
+            if mime_type == _XLSX:
+                return self._extract_xlsx_text(raw)
+            if mime_type == _PPTX:
+                return self._extract_pptx_text(raw)
+            return raw.decode("utf-8", errors="ignore")
 
         except Exception as e:
             logger.warning(f"No se pudo extraer texto del archivo {file_id}: {e}")
@@ -164,6 +179,81 @@ class GoogleDriveIntegration(BaseIntegration):
             logger.warning("pypdf no instalado — PDFs no serán indexados. Instalar con: uv add pypdf")
         except Exception as e:
             logger.warning(f"Error extrayendo texto de PDF: {e}")
+        return ""
+
+    def _extract_docx_text(self, content: bytes) -> str:
+        try:
+            import docx
+            doc = docx.Document(io.BytesIO(content))
+            parts: list[str] = []
+
+            for para in doc.paragraphs:
+                text = para.text.strip()
+                if text:
+                    parts.append(text)
+
+            for table in doc.tables:
+                for row in table.rows:
+                    cells = [cell.text.strip() for cell in row.cells if cell.text.strip()]
+                    if cells:
+                        parts.append(" | ".join(cells))
+
+            return "\n".join(parts)
+        except ImportError:
+            logger.warning("python-docx no instalado — archivos .docx no serán indexados. Instalar con: uv add python-docx")
+        except Exception as e:
+            logger.warning(f"Error extrayendo texto de DOCX: {e}")
+        return ""
+
+    def _extract_pptx_text(self, content: bytes) -> str:
+        try:
+            from pptx import Presentation
+            from pptx.util import Pt
+            prs = Presentation(io.BytesIO(content))
+            parts: list[str] = []
+
+            for i, slide in enumerate(prs.slides, 1):
+                slide_parts: list[str] = []
+                for shape in slide.shapes:
+                    if not shape.has_text_frame:
+                        continue
+                    for para in shape.text_frame.paragraphs:
+                        text = "".join(run.text for run in para.runs).strip()
+                        if text:
+                            slide_parts.append(text)
+                if slide_parts:
+                    parts.append(f"=== Diapositiva {i} ===")
+                    parts.extend(slide_parts)
+
+            return "\n".join(parts)
+        except ImportError:
+            logger.warning("python-pptx no instalado — archivos .pptx no serán indexados. Instalar con: uv add python-pptx")
+        except Exception as e:
+            logger.warning(f"Error extrayendo texto de PPTX: {e}")
+        return ""
+
+    def _extract_xlsx_text(self, content: bytes) -> str:
+        try:
+            import openpyxl
+            wb = openpyxl.load_workbook(
+                io.BytesIO(content), read_only=True, data_only=True
+            )
+            parts: list[str] = []
+
+            for sheet_name in wb.sheetnames:
+                ws = wb[sheet_name]
+                parts.append(f"=== {sheet_name} ===")
+                for row in ws.iter_rows(values_only=True):
+                    cells = [str(c) for c in row if c is not None and str(c).strip()]
+                    if cells:
+                        parts.append(" | ".join(cells))
+
+            wb.close()
+            return "\n".join(parts)
+        except ImportError:
+            logger.warning("openpyxl no instalado — archivos .xlsx no serán indexados. Instalar con: uv add openpyxl")
+        except Exception as e:
+            logger.warning(f"Error extrayendo texto de XLSX: {e}")
         return ""
 
     # ── API pública ───────────────────────────────────────────────────────────
