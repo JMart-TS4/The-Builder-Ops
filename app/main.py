@@ -3,7 +3,7 @@ from config.logging import setup_logging
 from app.styles import apply_styles
 
 st.set_page_config(
-    page_title="Yilo — The Builder Ops",
+    page_title="ORBIT — The Builder Ops",
     page_icon="🤖",
     layout="wide",
     initial_sidebar_state="expanded",

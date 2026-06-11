@@ -254,7 +254,7 @@ def render_login() -> None:
     """
     Full-page login screen.
     Sets st.session_state.authenticated = True when the user clicks
-    "Entrar a Yilo" after both services are connected.
+    "Entrar a ORBIT" after both services are connected.
     """
     st.markdown(_LOGIN_CSS, unsafe_allow_html=True)
 
@@ -273,7 +273,7 @@ def render_login() -> None:
     st.markdown("""
         <div class='login-header'>
             <p class='login-brand'>The Builder Ops</p>
-            <h1 class='login-title'>Yilo</h1>
+            <h1 class='login-title'>ORBIT</h1>
             <p class='login-sub'>El asistente Inteligente de TS4</p>
         </div>
     """, unsafe_allow_html=True)

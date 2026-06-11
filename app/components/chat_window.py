@@ -60,7 +60,7 @@ def _welcome_message() -> str:
     user = st.session_state.get("current_user", {})
     name = user.get("name", "").split()[0] if user.get("name") else ""
     greeting = f"Hola, **{name}**." if name else "Hola."
-    return f"""{greeting} Soy **Yilo**, el asistente de visibilidad operativa de TS4.
+    return f"""{greeting} Soy **ORBIT**, el agente de inteligencia operativa de TS4.
 
 Estoy conectado en tiempo real a **ClickUp** y **Google Drive**, por lo que puedo darte información actualizada sobre cualquier proyecto del portafolio sin necesidad de consultar múltiples herramientas.
 
@@ -338,7 +338,7 @@ def render_chat() -> None:
             _render_assistant_message(msg["content"])
 
     # Input
-    if prompt := st.chat_input("Escríbele a Yilo..."):
+    if prompt := st.chat_input("Escríbele a ORBIT..."):
 
         if not conv["messages"]:
             update_conversation_title(conv["id"], prompt)
@@ -385,7 +385,7 @@ def render_chat() -> None:
                 status_area.empty()
 
             else:
-                with st.spinner("Yilo está pensando..."):
+                with st.spinner("ORBIT está pensando..."):
                     for chunk in chat_svc.stream_response(
                         message=prompt,
                         session_id=conv["id"],
