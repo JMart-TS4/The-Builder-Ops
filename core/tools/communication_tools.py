@@ -1,24 +1,4 @@
-import html as _html
-
 from langchain_core.tools import tool
-
-_SEPARADOR = "─" * 60
-
-_SALUDO_CORREO = "{destinatario},"
-_CIERRE_CORREO = "Quedo disponible para cualquier consulta.\n\nAtentamente,"
-
-_PRE_STYLE = (
-    "font-family:ui-monospace,'Courier New',monospace;"
-    "white-space:pre-wrap;"
-    "font-size:0.85rem;"
-    "line-height:1.55;"
-    "padding:14px 16px;"
-    "margin:8px 0 0 0;"
-    "background:rgba(52,211,153,0.06);"
-    "border-radius:6px;"
-    "border-left:3px solid rgba(52,211,153,0.5);"
-    "overflow-x:auto;"
-)
 
 
 def _coerce_str(value) -> str:
@@ -29,15 +9,9 @@ def _coerce_str(value) -> str:
         return "\n\n".join(_coerce_str(item) for item in value)
     if isinstance(value, dict):
         return value.get("text", str(value))
-    # Pydantic/SDK objects (TextBlock, etc.)
     if hasattr(value, "text"):
         return str(value.text)
     return str(value)
-
-
-def _render_pre(text: str) -> str:
-    """Envuelve el texto en un bloque <pre> HTML con escape seguro."""
-    return f'<pre style="{_PRE_STYLE}">{_html.escape(text)}</pre>'
 
 
 def make_communication_tools() -> list:
@@ -50,41 +24,36 @@ def make_communication_tools() -> list:
         cuerpo: str,
         remitente: str = "",
     ) -> str:
-        """Genera una plantilla de correo electrónico ejecutivo lista para enviar.
+        """Genera el contenido de un correo electrónico ejecutivo listo para enviar.
 
-        Úsala DESPUÉS de consultar la información relevante en Drive o ClickUp,
+        Usala DESPUES de consultar la informacion relevante en Drive o ClickUp,
         cuando el usuario pida redactar, preparar o crear un correo para un cliente.
 
         El correo siempre usa tono ejecutivo: directo, conciso, sin emojis y profesional.
 
         Args:
             destinatario: Nombre o empresa a quien va dirigido el correo.
-            asunto: Línea de asunto del correo. Debe ser clara y directa.
-            cuerpo: Contenido principal del correo con la información ya redactada.
+            asunto: Linea de asunto del correo. Debe ser clara y directa.
+            cuerpo: Contenido principal del correo con la informacion ya redactada.
                     Debe ser conciso, sin relleno y orientado al cliente.
-                    Evita emojis, frases de relleno y lenguaje informal.
-            remitente: Nombre del remitente. Dejar vacío si no se especifica.
+            remitente: Nombre del remitente. Dejar vacio si no se especifica.
         """
         destinatario = _coerce_str(destinatario)
         asunto       = _coerce_str(asunto)
         cuerpo       = _coerce_str(cuerpo)
         remitente    = _coerce_str(remitente)
 
-        saludo = _SALUDO_CORREO.format(destinatario=destinatario)
-        firma  = f"\n{remitente}" if remitente else ""
+        firma = f"\n\n{remitente}" if remitente else ""
 
-        plantilla = (
-            f"PLANTILLA DE CORREO\n"
-            f"{_SEPARADOR}\n"
-            f"Para: {destinatario}\n"
-            f"Asunto: {asunto}\n"
-            f"{_SEPARADOR}\n\n"
-            f"{saludo}\n\n"
+        return (
+            f"**Para:** {destinatario}\n\n"
+            f"**Asunto:** {asunto}\n\n"
+            f"---\n\n"
+            f"{destinatario},\n\n"
             f"{cuerpo}\n\n"
-            f"{_CIERRE_CORREO}{firma}\n"
-            f"{_SEPARADOR}"
+            f"Quedo disponible para cualquier consulta.\n\n"
+            f"Atentamente,{firma}"
         )
-        return _render_pre(plantilla)
 
     @tool
     def crear_mensaje_cliente(
@@ -93,40 +62,31 @@ def make_communication_tools() -> list:
         canal: str = "general",
     ) -> str:
         """Genera un mensaje corto y profesional para enviar a un cliente por WhatsApp,
-        Slack, Teams u otro canal de mensajería.
+        Slack, Teams u otro canal de mensajeria.
 
-        Úsala DESPUÉS de consultar la información relevante en Drive o ClickUp,
-        cuando el usuario pida redactar un mensaje, actualización rápida o notificación
+        Usala DESPUES de consultar la informacion relevante en Drive o ClickUp,
+        cuando el usuario pida redactar un mensaje, actualizacion rapida o notificacion
         para un cliente (no un correo formal).
 
         Args:
             destinatario: Nombre o empresa destinataria del mensaje.
-            contenido: Texto principal del mensaje con la información a comunicar.
+            contenido: Texto principal del mensaje con la informacion a comunicar.
                        Debe ser directo, sin emojis y profesional.
-            canal: Canal de envío. Opciones: "whatsapp", "slack", "teams", "general"
-                   (por defecto).
+            canal: Canal de envio. Opciones: "whatsapp", "slack", "teams", "general".
         """
         destinatario = _coerce_str(destinatario)
         contenido    = _coerce_str(contenido)
         canal        = _coerce_str(canal)
 
-        canal_l = canal.lower()
+        canal_l    = canal.lower()
+        encabezado = f"@{destinatario}" if canal_l in ("slack", "teams") else f"{destinatario},"
 
-        if canal_l in ("slack", "teams"):
-            encabezado = f"@{destinatario}"
-        else:
-            encabezado = f"{destinatario},"
-
-        pie = "Quedamos a su disposición ante cualquier consulta."
-
-        plantilla = (
-            f"MENSAJE PARA CLIENTE (via {canal.capitalize()})\n"
-            f"{_SEPARADOR}\n"
+        return (
+            f"**Canal:** {canal.capitalize()}\n\n"
+            f"---\n\n"
             f"{encabezado}\n\n"
             f"{contenido}\n\n"
-            f"{pie}\n"
-            f"{_SEPARADOR}"
+            f"Quedamos a su disposicion ante cualquier consulta."
         )
-        return _render_pre(plantilla)
 
     return [crear_correo_cliente, crear_mensaje_cliente]
